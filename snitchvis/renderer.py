@@ -51,12 +51,12 @@ class Renderer(QFrame):
         self.snitches = snitches
         self.events = events
 
-        # figure out a bounding box for our snitches.
-        # first, we'll find the extremities of the snitches.
-        self.max_x = max(s.x for s in self.snitches)
-        self.min_x = min(s.x for s in self.snitches)
-        self.max_y = max(s.y for s in self.snitches)
-        self.min_y = min(s.y for s in self.snitches)
+        # figure out a bounding box for our events.
+        # first, we'll find the extremities of the events.
+        self.max_x = max(e.x for e in self.events)
+        self.min_x = min(e.x for e in self.events)
+        self.max_y = max(e.y for e in self.events)
+        self.min_y = min(e.y for e in self.events)
         # this is almost certainly a rectangle, so we'll pad it out to be a
         # square, adding padding along the shorter axis.
         x_dist = self.max_x - self.min_x
