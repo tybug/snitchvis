@@ -49,10 +49,15 @@ for raw_event in raw_events:
 
     result = re.match(pattern, raw_event)
     time_str, nl_group, username, snitch_name, x, y, z = result.groups()
+    x = int(x)
+    y = int(y)
+    z = int(z)
     time = datetime.strptime(time_str, "%H:%M:%S")
     # time = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
 
-    event = EventClass(username, snitch_name, nl_group, x, y, z, time)
+    # minecraft uses y as height, to preserve my sanity we're going to swap and
+    # use z as height
+    event = EventClass(username, snitch_name, nl_group, x, z, y, time)
     events.append(event)
 
 # normalize all event times to the earliest event, and convert to ms
