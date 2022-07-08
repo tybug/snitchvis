@@ -45,7 +45,7 @@ class Snitchvis(QMainWindow):
         np.seterr(**PREVIOUS_ERRSTATE)
 
     def exit_fullscreen(self):
-        self.setWindowState(Qt.WindowNoState)
+        self.setWindowState(Qt.WindowState.WindowNoState)
 
     def seek_to(self, timestamp):
         self.interface.renderer.seek_to(timestamp)
