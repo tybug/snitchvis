@@ -184,30 +184,6 @@ class Renderer(QFrame):
             self.pause_signal.emit()
             return
 
-        # This is the solution to the issue of stepping forward/backwards
-        # getting stuck on certain frames - we can fix it for stepping forward
-        # by always preferring the right side when searching our array, but when
-        # stepping backwards we need to prefer the left side instead.
-        side = "left" if reverse else "right"
-        event_times = [event.t for event in self.events]
-        new_event_time = np.searchsorted(event_times, current_time, side)
-        # TODO reimplement this
-        # for player in self.players:
-        #     player.end_pos = np.searchsorted(player.t, current_time, side)
-        #     # for some reason side=right and side=left differ by 1 even when
-        #     # the array has no duplicates, so only account for that in the
-        #     # right side case
-        #     if side == "right":
-        #         player.end_pos -= 1
-
-        #     player.start_pos = 0
-        #     if player.end_pos >= self.num_frames_on_screen:
-        #         player.start_pos = player.end_pos - self.num_frames_on_screen
-
-        #     # never go out of bounds
-        #     if player.end_pos >= len(player.xy):
-        #         player.end_pos = len(player.xy) - 1
-
         self.update_time_signal.emit(int(current_time))
         self.update()
 
