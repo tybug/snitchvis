@@ -222,6 +222,8 @@ class Renderer(QFrame):
 
         # snitches
         self.paint_snitches()
+        # events
+        self.paint_events()
 
         self.painter.end()
 
@@ -241,6 +243,13 @@ class Renderer(QFrame):
             self.draw_rectangle(snitch.x, snitch.y, snitch.x + 1, snitch.y + 1,
                 fill_with=BRUSH_WHITE)
 
+    def paint_events(self):
+        current_time = self.clock.get_time()
+        for event1, event2 in zip(self.events, self.events[1:]):
+            if not current_time - 1000000 <= event1.t <= current_time:
+                continue
+            self.draw_line(1, event1.x, event1.y, event2.x, event2.y)
+
     def draw_rectangle(self, start_x, start_y, end_x, end_y, *, fill_with=None):
         start = self.scaled_point(start_x, start_y)
         end = self.scaled_point(end_x, end_y)
@@ -250,19 +259,10 @@ class Renderer(QFrame):
             return
         self.painter.fillRect(rect, fill_with)
 
-    def draw_line(self, alpha, start, end):
-        """
-        Draws a line at the given alpha level from the start point to the end
-        point.
-
-        Arguments:
-            Float alpha: The alpha level (from 0.0 to 1.0) to set the line to.
-            List start: The X&Y position of the start of the line.
-            List end: The X&Y position of the end of the line.
-        """
+    def draw_line(self, alpha, start_x, start_y, end_x, end_y):
         self.painter.setOpacity(alpha)
-        self.painter.drawLine(self.scaled_point(start[0], start[1]),
-            self.scaled_point(end[0], end[1]))
+        self.painter.drawLine(self.scaled_point(start_x, start_y),
+            self.scaled_point(end_x, end_y))
 
     def draw_progressbar(self, percentage):
         loading_bg = QPainterPath()
