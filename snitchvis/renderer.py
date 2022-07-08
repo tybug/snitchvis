@@ -169,7 +169,7 @@ class Renderer(QFrame):
 
         self.next_frame()
 
-    def next_frame(self, reverse=False):
+    def next_frame(self):
         """
         Prepares the next frame.
 
@@ -334,12 +334,12 @@ class Renderer(QFrame):
         # prevent out of bounds errors
         index = np.clip(index, 0, len(self.events) - 1)
         event = self.events[index]
-        self.seek_to(event.t, reverse=reverse)
+        self.seek_to(event.t)
 
-    def seek_to(self, position, reverse=False):
+    def seek_to(self, position):
         self.clock.time_counter = position
         if self.paused:
-            self.next_frame(reverse=reverse)
+            self.next_frame()
 
     def wheelEvent(self, event):
         # from the qt docs on pixelDelta: "This value is provided on platforms
