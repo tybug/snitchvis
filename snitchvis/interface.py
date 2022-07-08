@@ -59,7 +59,7 @@ class Interface(QWidget):
 
     def change_frame(self, reverse):
         self.pause()
-        self.renderer.search_nearest_frame(reverse=reverse)
+        self.renderer.next_event(reverse=reverse)
 
     def toggle_pause(self):
         if self.renderer.paused:

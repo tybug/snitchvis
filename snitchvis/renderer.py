@@ -295,37 +295,19 @@ class Renderer(QFrame):
         progress = 0
         self.draw_progressbar(progress)
 
-    def search_nearest_frame(self, reverse=False):
-        """
-        Args
-            Boolean reverse: whether to search backwards or forwards through
-                time
-        """
-        if not reverse:
-            next_frames = []
-            for player in self.players:
-                pos = player.end_pos + 1
-                # stay at the end of the replay, avoid index error
-                if pos == len(player.xy):
-                    pos -= 1
-                next_frames.append(player.t[pos])
-            # if we're only visualizing a beatmap and there's no replays, and
-            # someone tries to advance or retreat frames, min() / max() will
-            # crash because next_frames is empty, so avoid this.
-            if not next_frames:
-                return
-            self.seek_to(min(next_frames))
-        else:
-            prev_frames = []
-            for player in self.players:
-                pos = player.end_pos - 1
-                # stay at the beginning of the replay, don't wrap around to end
-                if pos == -1:
-                    pos += 1
-                prev_frames.append(player.t[pos])
-            if not prev_frames:
-                return
-            self.seek_to(max(prev_frames), reverse=True)
+    def next_event(self, reverse=False):
+        current_time = self.clock.get_time()
+        event_times = [e.t for e in self.events]
+        side = "left" if reverse else "right"
+        index = np.searchsorted(event_times, current_time, side)
+
+        if reverse:
+            index -= 1
+
+        # prevent out of bounds errors
+        index = np.clip(index, 0, len(self.events) - 1)
+        event = self.events[index]
+        self.seek_to(event.t, reverse=reverse)
 
     def seek_to(self, position, reverse=False):
         self.clock.time_counter = position
