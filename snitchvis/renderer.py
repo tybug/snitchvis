@@ -43,13 +43,13 @@ class Renderer(QFrame):
     pause_signal = pyqtSignal()
     loaded_signal = pyqtSignal()
 
-    def __init__(self, snitches, pings, start_speed):
+    def __init__(self, snitches, events, start_speed):
         super().__init__()
         self.setMinimumSize(GAMEPLAY_WIDTH + GAMEPLAY_PADDING_WIDTH * 2,
             GAMEPLAY_HEIGHT + GAMEPLAY_PADDING_HEIGHT * 2)
 
         self.snitches = snitches
-        self.pings = pings
+        self.events = events
 
         # figure out a bounding box for our snitches.
         # first, we'll find the extremities of the snitches.
@@ -81,7 +81,7 @@ class Renderer(QFrame):
         self.previously_loading = False
 
         self.playback_start = 0
-        self.playback_end = max(ping.t for ping in pings)
+        self.playback_end = max(event.t for event in events)
 
         self.clock = Timer(start_speed, self.playback_start)
         self.paused = False
@@ -189,8 +189,8 @@ class Renderer(QFrame):
         # by always preferring the right side when searching our array, but when
         # stepping backwards we need to prefer the left side instead.
         side = "left" if reverse else "right"
-        ping_times = [ping.t for ping in self.pings]
-        new_ping_time = np.searchsorted(ping_times, current_time, side)
+        event_times = [event.t for event in self.events]
+        new_event_time = np.searchsorted(event_times, current_time, side)
         # TODO reimplement this
         # for player in self.players:
         #     player.end_pos = np.searchsorted(player.t, current_time, side)
@@ -230,10 +230,25 @@ class Renderer(QFrame):
         self.painter.setPen(PEN_BLUE)
         self.painter.setOpacity(1)
 
+        # snitch fields
+        # TODO opacity
         for snitch in self.snitches:
-            start = self.scaled_point(snitch.x - 0.5, snitch.y - 0.5)
-            end = self.scaled_point(snitch.x + 0.5, snitch.y + 0.5)
-            self.painter.drawRect(QRectF(start, end))
+            self.draw_rectangle(snitch.x - 10, snitch.y - 10,
+                snitch.x + 12, snitch.y + 12, fill_with=BRUSH_BLUE)
+
+        # snitches
+        for snitch in self.snitches:
+            self.draw_rectangle(snitch.x, snitch.y, snitch.x + 1, snitch.y + 1,
+                fill_with=BRUSH_WHITE)
+
+    def draw_rectangle(self, start_x, start_y, end_x, end_y, *, fill_with=None):
+        start = self.scaled_point(start_x, start_y)
+        end = self.scaled_point(end_x, end_y)
+        rect = QRectF(start, end)
+        if not fill_with:
+            self.painter.drawRect(rect)
+            return
+        self.painter.fillRect(rect, fill_with)
 
     def draw_line(self, alpha, start, end):
         """

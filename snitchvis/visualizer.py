@@ -8,7 +8,7 @@ from snitchvis.interface import Interface
 PREVIOUS_ERRSTATE = np.seterr('raise')
 
 class Snitchvis(QMainWindow):
-    def __init__(self, snitches, pings,
+    def __init__(self, snitches, events,
         speeds=[0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 3.0, 5.0, 10.0],
         start_speed=1
     ):
@@ -16,7 +16,7 @@ class Snitchvis(QMainWindow):
 
         self.setAutoFillBackground(True)
         self.setWindowTitle("Visualizer")
-        self.interface = Interface(snitches, pings, speeds, start_speed)
+        self.interface = Interface(snitches, events, speeds, start_speed)
         self.interface.renderer.loaded_signal.connect(self.on_load)
         self.setCentralWidget(self.interface)
 
@@ -75,7 +75,7 @@ class SnitchvisApp(QApplication):
     """
     ``speeds`` must contain ``start_speed``, ``1``, ``0.75``, and ``1.5``.
     """
-    def __init__(self, snitches, pings,
+    def __init__(self, snitches, events,
         speeds=[0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 3.0, 5.0, 10.0],
         start_speed=1
     ):
@@ -85,7 +85,7 @@ class SnitchvisApp(QApplication):
 
         self.visualizer = None
         self.snitches = snitches
-        self.pings = pings
+        self.events = events
         self.speeds = speeds
         self.start_speed = start_speed
 
@@ -98,7 +98,7 @@ class SnitchvisApp(QApplication):
         # we can't create this in ``__init__`` because we can't instantiate a
         # ``QWidget`` before a ``QApplication``, so delay until here, which is
         # all it's necessary for.
-        self.visualizer = Snitchvis(self.snitches, self.pings, self.speeds,
+        self.visualizer = Snitchvis(self.snitches, self.events, self.speeds,
             self.start_speed)
         self.visualizer.interface.renderer.loaded_signal.connect(self.on_load)
         self.visualizer.show()
