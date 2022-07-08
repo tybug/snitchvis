@@ -214,7 +214,7 @@ class Renderer(QFrame):
             end = self.scaled_point(snitch.x + 1, snitch.y + 1)
             self.painter.drawRect(QRectF(start, end))
 
-    def draw_line(self, alpha, start, end, grey_out=False):
+    def draw_line(self, alpha, start, end):
         """
         Draws a line at the given alpha level from the start point to the end
         point.
@@ -223,19 +223,10 @@ class Renderer(QFrame):
             Float alpha: The alpha level (from 0.0 to 1.0) to set the line to.
             List start: The X&Y position of the start of the line.
             List end: The X&Y position of the end of the line.
-            Boolean grey_out: Whether to grey out the line or not.
         """
-        if grey_out:
-            prev_pen = self.painter.pen()
-            PEN_GREY_INACTIVE.setWidth(self.scaled_number(WIDTH_LINE_RAW_VIEW))
-            self.painter.setPen(PEN_GREY_INACTIVE)
-
         self.painter.setOpacity(alpha)
         self.painter.drawLine(self.scaled_point(start[0], start[1]),
             self.scaled_point(end[0], end[1]))
-
-        if self.raw_view and grey_out:
-            self.painter.setPen(prev_pen)
 
     def draw_progressbar(self, percentage):
         loading_bg = QPainterPath()
@@ -264,8 +255,7 @@ class Renderer(QFrame):
     def draw_loading_screen(self):
         x = self.width() / 2 - 75
         y = self.height() / 2 - 10
-        self.painter.drawText(x, y, "Calculating Sliders, please wait...")
-        # TODO progress
+        self.painter.drawText(x, y, "Loading...")
         progress = 0
         self.draw_progressbar(progress)
 
