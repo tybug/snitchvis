@@ -32,8 +32,8 @@ BRUSH_GRAY = QBrush(QColor(100, 100, 100))
 BRUSH_DARKGRAY = QBrush(QColor(10, 10, 10))
 BRUSH_BLANK = QBrush(QColor(0, 0, 0, 0))
 
-GAMEPLAY_PADDING_WIDTH = 50
-GAMEPLAY_PADDING_HEIGHT = 60
+GAMEPLAY_PADDING_WIDTH = 20
+GAMEPLAY_PADDING_HEIGHT = 20
 GAMEPLAY_WIDTH = 600
 GAMEPLAY_HEIGHT = 450
 
@@ -72,12 +72,7 @@ class Renderer(QFrame):
             self.max_y += (dist_diff / 2)
             self.min_y -= (dist_diff / 2)
 
-        print(self.min_x, self.max_x, self.min_y, self.max_y)
-
         self.painter = QPainter()
-        self.scale = 1
-        self.x_offset = 0
-        self.y_offset = 0
 
         self.setMouseTracking(True)
 
@@ -106,35 +101,61 @@ class Renderer(QFrame):
 
         self.next_frame()
 
-    def resizeEvent(self, event):
-        width = event.size().width() - GAMEPLAY_PADDING_WIDTH * 2
-        height = event.size().height() - GAMEPLAY_PADDING_HEIGHT * 2
-        y_scale = height / GAMEPLAY_HEIGHT
-        x_scale = width / GAMEPLAY_WIDTH
-        if GAMEPLAY_WIDTH * y_scale > width:
-            self.scale = x_scale
-            self.y_offset = (height - GAMEPLAY_HEIGHT * x_scale) / 2
-            self.x_offset = 0
-        else:
-            self.scale = y_scale
-            self.y_offset = 0
-            self.x_offset = (width - GAMEPLAY_WIDTH * y_scale) / 2
 
-        print(round(x_scale, 2), round(y_scale, 2), round(self.scale, 2), round(self.x_offset, 2), round(self.y_offset, 2))
+    def scaled_x(self, x):
+        # * snitch cordinates: relative to the civmc map. eg -6750, 2300
+        # * snitch bounding box coordinates: relative to the bounding box of the
+        #   snitches we've been passed, which is the smallest square which
+        #   contains all the passed snitches.
+        # * view coordinates: relative to the full renderer widget, so 0,0 is
+        #   just below the x button of the window
+        # * draw coordinates: relative to the draw area of the renderer
+        #   widget, which is the sub area of the view area after padding by
+        #   GAMEPLAY_PADDING_HEIGHT and GAMEPLAY_PADDING_WIDTH. Will always be
+        #   a square.
 
-    def _x(self, position):
-        return (self.x_offset + GAMEPLAY_PADDING_WIDTH +
-            self.scaled_number(position))
+        # right now we have the snitch coordiantes. We want view coordinates.
+        # First, we'll convert to draw coordinates, then pad to get view
+        # coordinates.
 
-    def _y(self, position):
-        return (self.y_offset + GAMEPLAY_PADDING_HEIGHT +
-            self.scaled_number(position))
+        # Figure out the width of the draw area so we can scale our snitch
+        # coordinates accordingly.
+        draw_width = self.width() - 2 * GAMEPLAY_PADDING_WIDTH
+        draw_height = self.height() - 2 * GAMEPLAY_PADDING_HEIGHT
+        # draw area is always a square, so just pick the least of the two
+        draw_size = min(draw_width, draw_height)
+        # how far in to the snitch bounding box are we?
+        snitch_bounding_box_ratio = (x - self.min_x) / (self.max_x - self.min_x)
+        # multiply that by the width of the draw area to get our draw area
+        # coordinates
+        draw_area_coords = draw_size * snitch_bounding_box_ratio
+        # pad by GAMEPLAY_PADDING_WIDTH to get the view coordinates
+        draw_area_coords += GAMEPLAY_PADDING_WIDTH
+        # we actually need to do a bit more than this...if the renderer is wider
+        # than it is tall, we'll have extra padding that we didn't account for.
+        # figure out how much wider than tall we are (if at all) and pad by half
+        # that amount to center us.
+        draw_area_coords += max(self.width() - self.height(), 0) / 2
+        return draw_area_coords
+
+    def scaled_y(self, y):
+        draw_width = self.width() - 2 * GAMEPLAY_PADDING_WIDTH
+        draw_height = self.height() - 2 * GAMEPLAY_PADDING_HEIGHT
+        draw_size = min(draw_width, draw_height)
+        # how far in to the snitch bounding box are we?
+        snitch_bounding_box_ratio = (y - self.min_y) / (self.max_y - self.min_y)
+        # multiply that by the width of the draw area to get our draw area
+        # coordinates
+        draw_area_coords = draw_size * snitch_bounding_box_ratio
+        # pad by GAMEPLAY_PADDING_HEIGHT to get the view coordinates
+        draw_area_coords += GAMEPLAY_PADDING_HEIGHT
+        # add additional padding if we're taller than we are wide
+        draw_area_coords += max(self.height() - self.width(), 0) / 2
+        return draw_area_coords
+
 
     def scaled_point(self, x, y):
-        return QPointF(self._x(x), self._y(y))
-
-    def scaled_number(self, n):
-        return int(n * self.scale)
+        return QPointF(self.scaled_x(x), self.scaled_y(y))
 
     def next_frame_from_timer(self):
         """
@@ -205,7 +226,7 @@ class Renderer(QFrame):
         self.painter.end()
 
     def paint_snitches(self):
-        PEN_BLUE.setWidth(self.scaled_number(1))
+        PEN_BLUE.setWidth(1)
         self.painter.setPen(PEN_BLUE)
         self.painter.setOpacity(1)
 
