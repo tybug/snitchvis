@@ -210,8 +210,8 @@ class Renderer(QFrame):
         self.painter.setOpacity(1)
 
         for snitch in self.snitches:
-            start = self.scaled_point(snitch.x - 1, snitch.y - 1)
-            end = self.scaled_point(snitch.x + 1, snitch.y + 1)
+            start = self.scaled_point(snitch.x - 0.5, snitch.y - 0.5)
+            end = self.scaled_point(snitch.x + 0.5, snitch.y + 0.5)
             self.painter.drawRect(QRectF(start, end))
 
     def draw_line(self, alpha, start, end):
