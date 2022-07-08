@@ -246,7 +246,7 @@ class Renderer(QFrame):
     def paint_events(self):
         current_time = self.clock.get_time()
         for event1, event2 in zip(self.events, self.events[1:]):
-            if not current_time - 1000000 <= event1.t <= current_time:
+            if not current_time - 1000000 <= event2.t <= current_time:
                 continue
             self.draw_line(1, event1.x, event1.y, event2.x, event2.y)
 
