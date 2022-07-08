@@ -325,6 +325,7 @@ class Renderer(QFrame):
     def next_event(self, reverse=False):
         current_time = self.clock.get_time()
         event_times = [e.t for e in self.events]
+        # pick the most extreme event in the case of duplicate events
         side = "left" if reverse else "right"
         index = np.searchsorted(event_times, current_time, side)
 
