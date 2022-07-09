@@ -17,7 +17,7 @@ PEN_GRAY = QPen(QColor(75, 75, 75))
 PEN_GREY_INACTIVE = QPen(QColor(133, 125, 125))
 PEN_HIGHLIGHT = QPen(QColor(230, 212, 92))
 PEN_BLANK = QPen(QColor(0, 0, 0, 0))
-PEN_RED_TINT = QPen(QColor(200, 150, 150))
+PEN_RED = QPen(QColor(219, 16, 9))
 
 PEN_BLUE = QPen(QColor(93, 183, 223))
 PEN_GREEN = QPen(QColor(127, 221, 71))
@@ -275,7 +275,7 @@ class Renderer(QFrame):
         for event1, event2 in zip(self.events, self.events[1:]):
             if not current_time - 1000000 <= event2.t <= current_time:
                 continue
-            self.draw_line(1, event1.x, event1.y, event2.x, event2.y)
+            self.draw_line(event1.x, event1.y, event2.x, event2.y, 1, PEN_RED, 2)
 
     def draw_rectangle(self, start_x, start_y, end_x, end_y, *, fill_with=None):
         start = self.scaled_point(start_x, start_y)
@@ -286,7 +286,9 @@ class Renderer(QFrame):
             return
         self.painter.fillRect(rect, fill_with)
 
-    def draw_line(self, alpha, start_x, start_y, end_x, end_y):
+    def draw_line(self, start_x, start_y, end_x, end_y, alpha, pen, width):
+        pen.setWidth(width)
+        self.painter.setPen(pen)
         self.painter.setOpacity(alpha)
         self.painter.drawLine(self.scaled_point(start_x, start_y),
             self.scaled_point(end_x, end_y))
