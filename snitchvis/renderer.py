@@ -43,7 +43,7 @@ class Renderer(QFrame):
     pause_signal = pyqtSignal()
     loaded_signal = pyqtSignal()
 
-    def __init__(self, snitches, events, start_speed):
+    def __init__(self, snitches, events, start_speed, show_all_snitches):
         super().__init__()
         self.setMinimumSize(GAMEPLAY_WIDTH + GAMEPLAY_PADDING_WIDTH * 2,
             GAMEPLAY_HEIGHT + GAMEPLAY_PADDING_HEIGHT * 2)
@@ -52,11 +52,14 @@ class Renderer(QFrame):
         self.events = events
 
         # figure out a bounding box for our events.
+        # if we want to show all our snitches instead of all our events, bound
+        # to the snitches instead.
+        bounding_events = self.snitches if show_all_snitches else self.events
         # first, we'll find the extremities of the events.
-        self.max_x = max(e.x for e in self.events)
-        self.min_x = min(e.x for e in self.events)
-        self.max_y = max(e.y for e in self.events)
-        self.min_y = min(e.y for e in self.events)
+        self.max_x = max(e.x for e in bounding_events)
+        self.min_x = min(e.x for e in bounding_events)
+        self.max_y = max(e.y for e in bounding_events)
+        self.min_y = min(e.y for e in bounding_events)
         # this is almost certainly a rectangle, so we'll pad it out to be a
         # square, adding padding along the shorter axis.
         x_dist = self.max_x - self.min_x

@@ -10,13 +10,15 @@ PREVIOUS_ERRSTATE = np.seterr('raise')
 class Snitchvis(QMainWindow):
     def __init__(self, snitches, events,
         speeds=[0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 3.0, 5.0, 10.0],
-        start_speed=1
+        start_speed=1,
+        show_all_snitches=False
     ):
         super().__init__()
 
         self.setAutoFillBackground(True)
         self.setWindowTitle("Visualizer")
-        self.interface = Interface(snitches, events, speeds, start_speed)
+        self.interface = Interface(snitches, events, speeds, start_speed,
+            show_all_snitches)
         self.interface.renderer.loaded_signal.connect(self.on_load)
         self.setCentralWidget(self.interface)
 
@@ -77,7 +79,8 @@ class SnitchvisApp(QApplication):
     """
     def __init__(self, snitches, events,
         speeds=[0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 3.0, 5.0, 10.0],
-        start_speed=1
+        start_speed=1,
+        show_all_snitches=False
     ):
         super().__init__([])
         self.setStyle("Fusion")
@@ -88,6 +91,7 @@ class SnitchvisApp(QApplication):
         self.events = events
         self.speeds = speeds
         self.start_speed = start_speed
+        self.show_all_snitches = show_all_snitches
 
     def exec(self):
         """
@@ -99,7 +103,7 @@ class SnitchvisApp(QApplication):
         # ``QWidget`` before a ``QApplication``, so delay until here, which is
         # all it's necessary for.
         self.visualizer = Snitchvis(self.snitches, self.events, self.speeds,
-            self.start_speed)
+            self.start_speed, self.show_all_snitches)
         self.visualizer.interface.renderer.loaded_signal.connect(self.on_load)
         self.visualizer.show()
         super().exec()
