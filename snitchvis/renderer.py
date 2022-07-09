@@ -262,7 +262,7 @@ class Renderer(QFrame):
         # snitch fields
         # TODO opacity
         for snitch in self.snitches:
-            self.draw_rectangle(snitch.x - 10, snitch.y - 10,
+            self.draw_rectangle(snitch.x - 11, snitch.y - 11,
                 snitch.x + 12, snitch.y + 12, fill_with=BRUSH_BLUE)
 
         # snitches
