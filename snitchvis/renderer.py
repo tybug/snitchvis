@@ -50,6 +50,8 @@ class Renderer(QFrame):
 
         self.snitches = snitches
         self.events = events
+        self.current_mouse_x = 0
+        self.current_mouse_y = 0
 
         # figure out a bounding box for our events.
         # if we want to show all our snitches instead of all our events, bound
@@ -199,7 +201,7 @@ class Renderer(QFrame):
         self.painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
         # time elapsed
-        self.paint_time()
+        self.paint_info()
         # snitches
         self.paint_snitches()
         # events
@@ -207,11 +209,14 @@ class Renderer(QFrame):
 
         self.painter.end()
 
-    def paint_time(self):
+    def paint_info(self):
         # our current y coordinate for drawing info. Modified throughout this
         # function
         y = 15
+        # x offset from edge of screen
+        x_offset = 5
 
+        # draw time elapsed
         PEN_WHITE.setWidth(1)
         self.painter.setPen(PEN_WHITE)
         self.painter.setOpacity(1)
@@ -254,8 +259,13 @@ class Renderer(QFrame):
             minutes = abs(minutes)
             seconds = abs(seconds)
 
-        self.painter.drawText(5 + 4 + x, y,
+        self.painter.drawText(x_offset + 5 + x, y,
             f"ms ({sign}{minutes:01}:{seconds:02})")
+
+        # draw current mouse coordinates
+        y += 20
+        self.painter.drawText(x_offset, y,
+            f"{int(self.current_mouse_x)}, {int(self.current_mouse_y)}")
 
     def paint_snitches(self):
         PEN_BLUE.setWidth(1)
@@ -365,6 +375,33 @@ class Renderer(QFrame):
             delta = max(event.angleDelta().x(), event.angleDelta().y(), key=abs)
 
         self.seek_to(self.clock.time_counter + delta)
+
+    def mouseMoveEvent(self, event):
+        x = event.pos().x()
+        y = event.pos().y()
+        # convert local screen coordinates (where 0,0 is the upper left corner)
+        # to in-game coordinates.
+
+        # how wide is the snitch bounding box in pixels?
+        draw_width = self.width() - 2 * GAMEPLAY_PADDING_WIDTH
+        draw_height = self.height() - 2 * GAMEPLAY_PADDING_HEIGHT
+        draw_size = min(draw_width, draw_height)
+
+        x -= GAMEPLAY_PADDING_WIDTH + max(self.width() - self.height(), 0) / 2
+        y -= GAMEPLAY_PADDING_HEIGHT + max(self.height() - self.width(), 0) / 2
+
+        # how far in to the snitch bounding box are we?
+        ratio_x = x / draw_size
+        ratio_y = y / draw_size
+
+        # bounding box should always be a square
+        assert self.max_x - self.min_x == self.max_y - self.min_y
+        self.current_mouse_x = self.min_x + ratio_x * (self.max_x - self.min_x)
+        self.current_mouse_y = self.min_y + ratio_y * (self.max_y - self.min_y)
+        # update mouse coords if we're paused
+        self.update()
+
+        return super().mouseMoveEvent(event)
 
     def pause(self):
         """
