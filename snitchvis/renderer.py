@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from datetime import timedelta
 
 import numpy as np
@@ -31,7 +30,7 @@ class Renderer(QFrame):
     pause_signal = pyqtSignal()
     loaded_signal = pyqtSignal()
 
-    def __init__(self, snitches, events, start_speed, show_all_snitches):
+    def __init__(self, snitches, events, users, start_speed, show_all_snitches):
         super().__init__()
         self.setMinimumSize(GAMEPLAY_WIDTH + GAMEPLAY_PADDING_WIDTH * 2,
             GAMEPLAY_HEIGHT + GAMEPLAY_PADDING_HEIGHT * 2)
@@ -42,13 +41,7 @@ class Renderer(QFrame):
         for event in events:
             event.t = int((event.t - self.event_start_t).total_seconds() * 1000)
 
-        # get all unique usernames
-        usernames = {event.username for event in events}
-        self.users = []
-        for i, username in enumerate(usernames):
-            color = QColor().fromHslF(i / len(usernames), 0.75, 0.5)
-            user = User(username, color)
-            self.users.append(user)
+        self.users = users
         # hash by username for convenience
         self.users_by_username = {user.username: user for user in self.users}
 
@@ -425,11 +418,3 @@ class Renderer(QFrame):
         """
         self.paused = False
         self.clock.resume()
-
-@dataclass
-class User:
-    username: str
-    color: QColor
-    # init with an empty qrect, we'll set the actual info pos later
-    info_pos_rect: QRect = QRect(0, 0, 0, 0)
-    enabled: bool = True

@@ -1,5 +1,8 @@
+from dataclasses import dataclass
+
 from PyQt6.QtWidgets import QGridLayout, QWidget, QSplitter, QFrame
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QRect
+from PyQt6.QtGui import QColor
 
 from snitchvis.renderer import Renderer
 from snitchvis.controls import VisualizerControls
@@ -10,14 +13,21 @@ class Interface(QWidget):
         super().__init__()
         self.speeds = speeds
 
-        self.renderer = Renderer(snitches, events, start_speed,
+        users = []
+        usernames = {event.username for event in events}
+        for i, username in enumerate(usernames):
+            color = QColor().fromHslF(i / len(usernames), 0.75, 0.5)
+            user = User(username, color)
+            users.append(user)
+
+        self.renderer = Renderer(snitches, events, users, start_speed,
             show_all_snitches)
         self.renderer.update_time_signal.connect(self.update_slider)
         # if the renderer wants to pause itself (eg when the playback hits the
         # end of the replay), we kick it back to us (the `Interface`) so we can
         # also update the pause button's state.
         self.renderer.pause_signal.connect(self.toggle_pause)
-        self.controls = VisualizerControls(start_speed, events)
+        self.controls = VisualizerControls(start_speed, events, users)
         self.controls.pause_button.clicked.connect(self.toggle_pause)
         self.controls.play_reverse_button.clicked.connect(self.play_reverse)
         self.controls.play_normal_button.clicked.connect(self.play_normal)
@@ -125,3 +135,12 @@ class Combined(QFrame):
                 layout.addWidget(widget, i, 0, 1, 1)
 
         self.setLayout(layout)
+
+@dataclass
+class User:
+    username: str
+    color: QColor
+    # init with an empty qrect, we'll set the actual info pos later (when used
+    # by Renderer anyway)
+    info_pos_rect: QRect = QRect(0, 0, 0, 0)
+    enabled: bool = True
