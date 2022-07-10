@@ -92,8 +92,10 @@ def parse_events(path):
         x = int(x)
         y = int(y)
         z = int(z)
-        time = datetime.strptime(time_str, "%H:%M:%S")
-        # time = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
+        try:
+            time = datetime.strptime(time_str, "%H:%M:%S")
+        except:
+            time = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
 
         # minecraft uses y as height, to preserve my sanity we're going to swap and
         # use z as height
