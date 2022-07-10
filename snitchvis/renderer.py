@@ -272,7 +272,7 @@ class Renderer(QFrame):
         for snitch in self.snitches:
             self.draw_rectangle(snitch.x - 11, snitch.y - 11,
                 snitch.x + 12, snitch.y + 12, color=SNITCH_FIELD_COLOR,
-                alpha=0.15)
+                alpha=0.23)
         for snitch in self.snitches:
             color = None
             alpha = None
