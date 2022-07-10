@@ -1,3 +1,8 @@
+from dataclasses import dataclass
+import re
+from datetime import datetime
+import sqlite3
+
 import numpy as np
 from PyQt6.QtGui import QPalette, QColor, QShortcut
 from PyQt6.QtWidgets import QMainWindow, QApplication
@@ -7,8 +12,121 @@ from snitchvis.interface import Interface
 
 PREVIOUS_ERRSTATE = np.seterr('raise')
 
+
+@dataclass
+class Event:
+    username: str
+    snitch_name: str
+    namelayer_group: str
+    x: int
+    y: int
+    z: int
+    # time in ms
+    t: int
+
+@dataclass
+class Snitch:
+    world: str
+    x: int
+    y: int
+    z: int
+    group_name: str
+    type: str
+    name: str
+    dormat_ts: int
+    cull_ts: int
+    last_seen_ts: int
+    created_ts: int
+    created_by_uuid: str
+    renamde_ts: int
+    renamed_by_uuid: str
+    lost_jalist_access_ts: int
+    broken_ts: int
+    gone_ts: int
+    tags: str
+    notes: str
+    # events that occurred at this snitch
+    events: list[Event]
+
+    @staticmethod
+    def from_row(row):
+        # swap z and y for my sanity
+        return Snitch(world=row[0], x=row[1], z=row[2], y=row[3],
+            group_name=row[4], type=row[5], name=row[6], dormat_ts=row[7],
+            cull_ts=row[8], last_seen_ts=row[9], created_ts=row[10],
+            created_by_uuid=row[11], renamde_ts=row[12],
+            renamed_by_uuid=row[13], lost_jalist_access_ts=row[14],
+            broken_ts=row[15], gone_ts=row[16], tags=row[17], notes=row[18],
+            events=[])
+
+class Ping(Event):
+    pass
+class Logout(Event):
+    pass
+class Login(Event):
+    pass
+
+
+
+def parse_events(path):
+    events = []
+
+    with open(path, encoding="utf8") as f:
+        raw_events = f.readlines()
+
+    pattern = r"\[(.*?)\] \[(.*?)\] (\w*?) (?:is|logged out|logged in) at (.*?) \((.*?),(.*?),(.*?)\)"
+
+    for raw_event in raw_events:
+        if "is at" in raw_event:
+            EventClass = Ping
+        if "logged out" in raw_event:
+            EventClass = Logout
+        if "logged in" in raw_event:
+            EventClass = Login
+
+        result = re.match(pattern, raw_event)
+        time_str, nl_group, username, snitch_name, x, y, z = result.groups()
+        x = int(x)
+        y = int(y)
+        z = int(z)
+        time = datetime.strptime(time_str, "%H:%M:%S")
+        # time = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
+
+        # minecraft uses y as height, to preserve my sanity we're going to swap and
+        # use z as height
+        event = EventClass(username, snitch_name, nl_group, x, z, y, time)
+        events.append(event)
+
+    # normalize all event times to the earliest event, and convert to ms
+    earliest_event_t = min(event.t for event in events)
+
+    for event in events:
+        event.t = int((event.t - earliest_event_t).total_seconds() * 1000)
+
+    return events
+
+def parse_snitches(path, events):
+    conn = sqlite3.connect(path)
+    cur = conn.cursor()
+    rows = cur.execute("SELECT * FROM snitches_v2")
+    snitches = []
+    for row in rows:
+        snitch = Snitch.from_row(row)
+        # don't visualize snitches which are broken or gone
+        if snitch.broken_ts or snitch.gone_ts:
+            continue
+        snitches.append(snitch)
+
+    snitch_by_pos = {(snitch.x, snitch.y): snitch for snitch in snitches}
+    for event in events:
+        snitch = snitch_by_pos[(event.x, event.y)]
+        snitch.events.append(event)
+    return snitches
+
+
+
 class Snitchvis(QMainWindow):
-    def __init__(self, snitches, events,
+    def __init__(self, snitch_db, event_file,
         speeds=[0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 3.0, 5.0, 10.0],
         start_speed=1,
         show_all_snitches=False
@@ -17,6 +135,8 @@ class Snitchvis(QMainWindow):
 
         self.setAutoFillBackground(True)
         self.setWindowTitle("Visualizer")
+        events = parse_events(event_file)
+        snitches = parse_snitches(snitch_db, events)
         self.interface = Interface(snitches, events, speeds, start_speed,
             show_all_snitches)
         self.interface.renderer.loaded_signal.connect(self.on_load)
@@ -77,7 +197,7 @@ class SnitchvisApp(QApplication):
     """
     ``speeds`` must contain ``start_speed``, ``1``, ``0.75``, and ``1.5``.
     """
-    def __init__(self, snitches, events,
+    def __init__(self, snitch_db, event_file,
         speeds=[0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 3.0, 5.0, 10.0],
         start_speed=1,
         show_all_snitches=False
@@ -87,8 +207,8 @@ class SnitchvisApp(QApplication):
         self.setApplicationName("Circlevis")
 
         self.visualizer = None
-        self.snitches = snitches
-        self.events = events
+        self.snitch_db = snitch_db
+        self.event_file = event_file
         self.speeds = speeds
         self.start_speed = start_speed
         self.show_all_snitches = show_all_snitches
@@ -102,7 +222,7 @@ class SnitchvisApp(QApplication):
         # we can't create this in ``__init__`` because we can't instantiate a
         # ``QWidget`` before a ``QApplication``, so delay until here, which is
         # all it's necessary for.
-        self.visualizer = Snitchvis(self.snitches, self.events, self.speeds,
+        self.visualizer = Snitchvis(self.snitch_db, self.event_file, self.speeds,
             self.start_speed, self.show_all_snitches)
         self.visualizer.interface.renderer.loaded_signal.connect(self.on_load)
         self.visualizer.show()
