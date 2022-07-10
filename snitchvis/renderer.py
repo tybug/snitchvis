@@ -45,9 +45,8 @@ class Renderer(QFrame):
         # hash by username for convenience
         self.users_by_username = {user.username: user for user in self.users}
 
-
         self.snitches = snitches
-        self.events = sorted(events, key = lambda event: event.t)
+        self.events = events
         self.current_mouse_x = 0
         self.current_mouse_y = 0
         # 5 minutes in ms

@@ -135,6 +135,7 @@ class Snitchvis(QMainWindow):
         self.setAutoFillBackground(True)
         self.setWindowTitle("Visualizer")
         events = parse_events(event_file)
+        events = sorted(events, key = lambda event: event.t)
         snitches = parse_snitches(snitch_db, events)
         self.interface = Interface(snitches, events, speeds, start_speed,
             show_all_snitches)
