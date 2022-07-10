@@ -13,24 +13,13 @@ WIDTH_CROSS = 2
 LENGTH_CROSS = 6
 
 PEN_WHITE = QPen(QColor(200, 200, 200))
-PEN_GRAY = QPen(QColor(75, 75, 75))
-PEN_GREY_INACTIVE = QPen(QColor(133, 125, 125))
-PEN_HIGHLIGHT = QPen(QColor(230, 212, 92))
-PEN_BLANK = QPen(QColor(0, 0, 0, 0))
-PEN_RED = QPen(QColor(219, 16, 9))
-
-PEN_BLUE = QPen(QColor(93, 183, 223))
-PEN_GREEN = QPen(QColor(127, 221, 71))
-PEN_YELLOW = QPen(QColor(211, 175, 90))
-
-BRUSH_BLUE = QBrush(QColor(93, 183, 223))
-BRUSH_GREEN = QBrush(QColor(127, 221, 71))
-BRUSH_YELLOW = QBrush(QColor(211, 175, 90))
-
-BRUSH_WHITE = QBrush(QColor(200, 200, 200))
-BRUSH_GRAY = QBrush(QColor(100, 100, 100))
-BRUSH_DARKGRAY = QBrush(QColor(10, 10, 10))
-BRUSH_BLANK = QBrush(QColor(0, 0, 0, 0))
+# 23x23 square, light blue
+PEN_SNITCH_FIELD = QPen(QColor(93, 183, 223, 40))
+BRUSH_SNITCH_FIELD = QBrush(QColor(93, 183, 223, 40))
+# actual snitch block, white
+BRUSH_SNITCH_BLOCK = QBrush(QColor(200, 200, 200))
+# color of snitch field when a snitch was recently pinged, red
+BRUSH_SNITCH_PINGED = QBrush(QColor(219, 16, 9))
 
 GAMEPLAY_PADDING_WIDTH = 20
 GAMEPLAY_PADDING_HEIGHT = 20
@@ -52,6 +41,8 @@ class Renderer(QFrame):
         self.events = events
         self.current_mouse_x = 0
         self.current_mouse_y = 0
+        # 5 minutes in ms
+        self.snitch_event_limit = 5 * 60 * 1000
 
         # figure out a bounding box for our events.
         # if we want to show all our snitches instead of all our events, bound
@@ -204,8 +195,6 @@ class Renderer(QFrame):
         self.paint_info()
         # snitches
         self.paint_snitches()
-        # events
-        self.paint_events()
 
         self.painter.end()
 
@@ -268,27 +257,35 @@ class Renderer(QFrame):
             f"{int(self.current_mouse_x)}, {int(self.current_mouse_y)}")
 
     def paint_snitches(self):
-        PEN_BLUE.setWidth(1)
-        self.painter.setPen(PEN_BLUE)
+        PEN_SNITCH_FIELD.setWidth(1)
+        self.painter.setPen(PEN_SNITCH_FIELD)
         self.painter.setOpacity(1)
+
+        current_time = self.clock.get_time()
 
         # snitch fields
         # TODO opacity
         for snitch in self.snitches:
             self.draw_rectangle(snitch.x - 11, snitch.y - 11,
-                snitch.x + 12, snitch.y + 12, fill_with=BRUSH_BLUE)
+                snitch.x + 12, snitch.y + 12, fill_with=BRUSH_SNITCH_FIELD)
 
-        # snitches
+        for snitch in self.snitches:
+            brush = BRUSH_SNITCH_FIELD
+
+            for event in snitch.events:
+                if not current_time - self.snitch_event_limit <= event.t <= current_time:
+                    continue
+                brush = BRUSH_SNITCH_PINGED
+                c = brush.color()
+                c.setAlphaF(1 - (current_time - event.t) / self.snitch_event_limit)
+                brush.setColor(c)
+
+            self.draw_rectangle(snitch.x - 11, snitch.y - 11,
+                snitch.x + 12, snitch.y + 12, fill_with=brush)
+
         for snitch in self.snitches:
             self.draw_rectangle(snitch.x, snitch.y, snitch.x + 1, snitch.y + 1,
-                fill_with=BRUSH_WHITE)
-
-    def paint_events(self):
-        current_time = self.clock.get_time()
-        for event1, event2 in zip(self.events, self.events[1:]):
-            if not current_time - 1000000 <= event2.t <= current_time:
-                continue
-            self.draw_line(event1.x, event1.y, event2.x, event2.y, 1, PEN_RED, 2)
+                fill_with=BRUSH_SNITCH_BLOCK)
 
     def draw_rectangle(self, start_x, start_y, end_x, end_y, *, fill_with=None):
         start = self.scaled_point(start_x, start_y)
