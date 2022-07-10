@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 import numpy as np
-from PyQt6.QtGui import QBrush, QPen, QColor, QPalette, QPainter, QCursor
+from PyQt6.QtGui import QColor, QPalette, QPainter, QCursor
 from PyQt6.QtWidgets import QFrame
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QPointF, QRectF, QRect
 
@@ -250,7 +250,7 @@ class Renderer(QFrame):
             # bounding rects require that we have a pen set, or else it will
             # (correctly) return QRect(0, 0, 0, 0), as the text won't actually
             # be visible.
-            self.painter.setPen(QPen(TEXT_COLOR))
+            self.painter.setPen(TEXT_COLOR)
             info_pos = self.painter.boundingRect(5, y - 9, 0, 0, 0, text)
             self.painter.setPen(Qt.PenStyle.NoPen)
             rect = QRect(info_pos.x(), info_pos.y(), info_pos.width(),
@@ -297,14 +297,12 @@ class Renderer(QFrame):
                 color=SNITCH_BLOCK_COLOR)
 
     def draw_rectangle(self, start_x, start_y, end_x, end_y, *, color, alpha=1,
-        width=1, scaled=True
+        scaled=True
     ):
         color = QColor(color.red(), color.green(), color.blue())
-        pen = QPen(color)
-        pen.setWidth(width)
         self.painter.setPen(Qt.PenStyle.NoPen)
         self.painter.setOpacity(alpha)
-        self.painter.setBrush(QBrush(color))
+        self.painter.setBrush(color)
 
         if scaled:
             start = self.scaled_point(start_x, start_y)
@@ -324,7 +322,7 @@ class Renderer(QFrame):
 
     def draw_text(self, x, y, text, alpha=1):
         pen = self.painter.pen()
-        self.painter.setPen(QPen(TEXT_COLOR))
+        self.painter.setPen(TEXT_COLOR)
         self.painter.setOpacity(alpha)
         self.painter.drawText(x, y, text)
         self.painter.setPen(pen)
