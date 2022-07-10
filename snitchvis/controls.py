@@ -96,7 +96,7 @@ class VisualizerControls(QFrame):
         # `x - 44` to not make the popup hang over the right side of the window
         # (aftering centering it horizontally), and `y - 6` to account for the
         # space between the button and the top of the controls row
-        self.settings_popup.setGeometry(int(global_pos.x() - (popup_width / 2) - 44),\
+        self.settings_popup.setGeometry(int(global_pos.x() - (popup_width / 2) - 95),\
             int(global_pos.y() - popup_height - 6), popup_width, popup_height)
 
 class SettingsPopup(QFrame):
@@ -106,10 +106,10 @@ class SettingsPopup(QFrame):
         # we're technically a window, but we don't want to be shown as such to
         # the user, so hide our window features (like the top bar)
         self.setWindowFlags(Qt.WindowType.Popup)
-        self.setMaximumWidth(300)
+        self.setMaximumWidth(400)
         self.setMaximumHeight(100)
 
-        self.snitch_event_limit = SliderSetting("Snitch Event Limit", 5, 1, 120)
+        self.snitch_event_limit = SliderSetting("Fade (mins)", 5, 1, 120)
 
         layout = QVBoxLayout()
         layout.addWidget(self.snitch_event_limit)
