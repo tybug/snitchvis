@@ -16,7 +16,7 @@ LENGTH_CROSS = 6
 PEN_BLANK = QPen(QColor(0, 0, 0, 0))
 PEN_WHITE = QPen(QColor(200, 200, 200))
 # 23x23 square, light blue
-SNITCH_FIELD_COLOR = QColor(93, 183, 223, 40)
+SNITCH_FIELD_COLOR = QColor(93, 183, 223)
 # actual snitch block, white
 SNITCH_BLOCK_COLOR = QColor(200, 200, 200)
 
@@ -270,8 +270,7 @@ class Renderer(QFrame):
         for snitch in self.snitches:
             self.draw_rectangle(snitch.x - 11, snitch.y - 11,
                 snitch.x + 12, snitch.y + 12, color=SNITCH_FIELD_COLOR,
-                fill=True, alpha=0.5)
-
+                alpha=0.15)
         for snitch in self.snitches:
             color = None
             alpha = None
@@ -289,28 +288,26 @@ class Renderer(QFrame):
             if not (color and alpha):
                 continue
             self.draw_rectangle(snitch.x - 11, snitch.y - 11, snitch.x + 12,
-                snitch.y + 12, color=color, alpha=alpha, fill=True)
+                snitch.y + 12, color=color, alpha=alpha)
 
         for snitch in self.snitches:
             self.draw_rectangle(snitch.x, snitch.y, snitch.x + 1, snitch.y + 1,
-                color=SNITCH_BLOCK_COLOR, fill=True)
+                color=SNITCH_BLOCK_COLOR)
 
     def draw_rectangle(self, start_x, start_y, end_x, end_y, *, color, alpha=1,
-        width=1, fill=False
+        width=1
     ):
         color = QColor(color.red(), color.green(), color.blue())
-        color.setAlphaF(alpha)
         pen = QPen(color)
         pen.setWidth(width)
-        self.painter.setPen(pen)
+        self.painter.setPen(Qt.PenStyle.NoPen)
         self.painter.setOpacity(alpha)
+        self.painter.setBrush(QBrush(color))
+
         start = self.scaled_point(start_x, start_y)
         end = self.scaled_point(end_x, end_y)
         rect = QRectF(start, end)
-        if not fill:
-            self.painter.drawRect(rect)
-            return
-        self.painter.fillRect(rect, QBrush(color))
+        self.painter.drawRect(rect)
 
     def draw_line(self, start_x, start_y, end_x, end_y, alpha, pen, width):
         pen.setWidth(width)
