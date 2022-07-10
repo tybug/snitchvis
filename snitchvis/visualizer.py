@@ -79,10 +79,13 @@ def parse_events(path):
     for raw_event in raw_events:
         if "is at" in raw_event:
             EventClass = Ping
-        if "logged out" in raw_event:
+        elif "logged out" in raw_event:
             EventClass = Logout
-        if "logged in" in raw_event:
+        elif "logged in" in raw_event:
             EventClass = Login
+        else:
+            # ignore lines which don't match the format
+            continue
 
         result = re.match(pattern, raw_event)
         time_str, nl_group, username, snitch_name, x, y, z = result.groups()
