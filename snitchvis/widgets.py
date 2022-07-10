@@ -62,7 +62,7 @@ class SliderSetting(QFrame):
         super().__init__()
 
         label = QLabel(text)
-        self.slider = JumpSlider(Qt.Horizontal)
+        self.slider = JumpSlider(Qt.Orientation.Horizontal)
         self.slider.setValue(start_value)
         self.slider.setRange(min_, max_)
         self.slider.valueChanged.connect(self._value_changed)
