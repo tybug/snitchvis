@@ -2,8 +2,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 import numpy as np
-from PyQt6.QtGui import (QBrush, QPen, QColor, QPalette, QPainter, QPainterPath,
-    QCursor)
+from PyQt6.QtGui import QBrush, QPen, QColor, QPalette, QPainter, QCursor
 from PyQt6.QtWidgets import QFrame
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QPointF, QRectF, QRect
 
@@ -88,10 +87,6 @@ class Renderer(QFrame):
         self.painter = QPainter()
 
         self.setMouseTracking(True)
-
-        # whether the previous frame was a loading frame or not, used to
-        # determine when we came out of a loading state
-        self.previously_loading = False
 
         self.playback_start = 0
         self.playback_end = max(event.t for event in events)
@@ -323,37 +318,6 @@ class Renderer(QFrame):
         self.painter.setOpacity(alpha)
         self.painter.drawLine(self.scaled_point(start_x, start_y),
             self.scaled_point(end_x, end_y))
-
-    def draw_progressbar(self, percentage):
-        loading_bg = QPainterPath()
-        loading_bar = QPainterPath()
-        c = self.painter.pen().color()
-
-        _pen = self.painter.pen()
-        _pen.setWidth(5)
-        _pen.setCapStyle(Qt.RoundCap)
-        _pen.setJoinStyle(Qt.RoundJoin)
-        _pen.setColor(QColor(c.red(), c.green(), c.blue(), 25))
-        self.painter.setPen(_pen)
-
-        loading_bg.moveTo(self.width()/2 - 75, self.height() / 2)
-        loading_bg.lineTo(self.width()/2 - 75 + 150, self.height() / 2)
-
-        loading_bar.moveTo(self.width() / 2 - 75, self.height() / 2)
-        loading_bar.lineTo(self.width() / 2 - 75 + percentage * 1.5,
-            self.height() / 2)
-
-        self.painter.drawPath(loading_bg)
-        _pen.setColor(QColor(c.red(), c.green(), c.blue(), 255))
-        self.painter.setPen(_pen)
-        self.painter.drawPath(loading_bar)
-
-    def draw_loading_screen(self):
-        x = self.width() / 2 - 75
-        y = self.height() / 2 - 10
-        self.painter.drawText(x, y, "Loading...")
-        progress = 0
-        self.draw_progressbar(progress)
 
     def next_event(self, reverse=False):
         current_time = self.clock.get_time()
