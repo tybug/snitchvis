@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from datetime import timedelta
-from copy import deepcopy
 
 import numpy as np
 from PyQt6.QtGui import (QBrush, QPen, QColor, QPalette, QPainter, QPainterPath,
@@ -18,10 +17,9 @@ LENGTH_CROSS = 6
 PEN_BLANK = QPen(QColor(0, 0, 0, 0))
 PEN_WHITE = QPen(QColor(200, 200, 200))
 # 23x23 square, light blue
-PEN_SNITCH_FIELD = QPen(QColor(93, 183, 223, 40))
-BRUSH_SNITCH_FIELD = QBrush(QColor(93, 183, 223, 40))
+SNITCH_FIELD_COLOR = QColor(93, 183, 223, 40)
 # actual snitch block, white
-BRUSH_SNITCH_BLOCK = QBrush(QColor(200, 200, 200))
+SNITCH_BLOCK_COLOR = QColor(200, 200, 200)
 
 GAMEPLAY_PADDING_WIDTH = 20
 GAMEPLAY_PADDING_HEIGHT = 20
@@ -271,20 +269,17 @@ class Renderer(QFrame):
             f"{int(self.current_mouse_x)}, {int(self.current_mouse_y)}")
 
     def paint_snitches(self):
-        PEN_SNITCH_FIELD.setWidth(1)
-        self.painter.setPen(PEN_SNITCH_FIELD)
-        self.painter.setOpacity(1)
-
         current_time = self.clock.get_time()
 
         # snitch fields
-        # TODO opacity
         for snitch in self.snitches:
             self.draw_rectangle(snitch.x - 11, snitch.y - 11,
-                snitch.x + 12, snitch.y + 12, fill_with=BRUSH_SNITCH_FIELD)
+                snitch.x + 12, snitch.y + 12, color=SNITCH_FIELD_COLOR,
+                fill=True, alpha=0.5)
 
         for snitch in self.snitches:
-            brush = BRUSH_SNITCH_FIELD
+            color = None
+            alpha = None
 
             for event in snitch.events:
                 if not current_time - self.snitch_event_limit <= event.t <= current_time:
@@ -293,25 +288,34 @@ class Renderer(QFrame):
                 # don't draw events from disabled users
                 if not user.enabled:
                     continue
-                color = deepcopy(user.color)
-                color.setAlphaF(1 - (current_time - event.t) / self.snitch_event_limit)
-                brush = QBrush(color)
+                color = user.color
+                alpha = (1 - (current_time - event.t) / self.snitch_event_limit)
 
-            self.draw_rectangle(snitch.x - 11, snitch.y - 11,
-                snitch.x + 12, snitch.y + 12, fill_with=brush)
+            if not (color and alpha):
+                continue
+            self.draw_rectangle(snitch.x - 11, snitch.y - 11, snitch.x + 12,
+                snitch.y + 12, color=color, alpha=alpha, fill=True)
 
         for snitch in self.snitches:
             self.draw_rectangle(snitch.x, snitch.y, snitch.x + 1, snitch.y + 1,
-                fill_with=BRUSH_SNITCH_BLOCK)
+                color=SNITCH_BLOCK_COLOR, fill=True)
 
-    def draw_rectangle(self, start_x, start_y, end_x, end_y, *, fill_with=None):
+    def draw_rectangle(self, start_x, start_y, end_x, end_y, *, color, alpha=1,
+        width=1, fill=False
+    ):
+        color = QColor(color.red(), color.green(), color.blue())
+        color.setAlphaF(alpha)
+        pen = QPen(color)
+        pen.setWidth(width)
+        self.painter.setPen(pen)
+        self.painter.setOpacity(alpha)
         start = self.scaled_point(start_x, start_y)
         end = self.scaled_point(end_x, end_y)
         rect = QRectF(start, end)
-        if not fill_with:
+        if not fill:
             self.painter.drawRect(rect)
             return
-        self.painter.fillRect(rect, fill_with)
+        self.painter.fillRect(rect, QBrush(color))
 
     def draw_line(self, start_x, start_y, end_x, end_y, alpha, pen, width):
         pen.setWidth(width)
