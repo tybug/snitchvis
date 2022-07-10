@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import (QFrame, QGridLayout, QLabel, QVBoxLayout)
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QIcon, QPainter, QPen
 from PyQt6.QtCore import Qt, pyqtSignal
 
 from snitchvis.utils import resource_path
@@ -9,9 +9,9 @@ class VisualizerControls(QFrame):
 
     snitch_event_changed = pyqtSignal(int)
 
-    def __init__(self, speed):
+    def __init__(self, speed, events):
         super().__init__()
-        self.time_slider = JumpSlider(Qt.Orientation.Horizontal)
+        self.time_slider = TimeSlider(events, Qt.Orientation.Horizontal)
         self.time_slider.setValue(0)
         self.time_slider.setFixedHeight(20)
         self.time_slider.setStyleSheet("outline: none;")
@@ -114,3 +114,29 @@ class SettingsPopup(QFrame):
         layout = QVBoxLayout()
         layout.addWidget(self.snitch_event_limit)
         self.setLayout(layout)
+
+class TimeSlider(JumpSlider):
+    def __init__(self, events, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.events = events
+        self.min_t = min(event.t for event in events)
+        self.max_t = max(event.t for event in events)
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+
+        pen = QPen(Qt.GlobalColor.red)
+        pen.setWidth(1)
+        painter.setPen(pen)
+
+        # add some vertical padding
+        padding = int(self.height() / 5)
+
+        for event in self.events:
+            # figure out how far into the time period this even tis
+            ratio = (event.t - self.min_t) / (self.max_t - self.min_t)
+            # convert to actual coordinates
+            x = int(ratio * self.width())
+            painter.drawLine(x, self.height() - padding, x, padding)

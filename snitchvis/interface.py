@@ -17,7 +17,7 @@ class Interface(QWidget):
         # end of the replay), we kick it back to us (the `Interface`) so we can
         # also update the pause button's state.
         self.renderer.pause_signal.connect(self.toggle_pause)
-        self.controls = VisualizerControls(start_speed)
+        self.controls = VisualizerControls(start_speed, events)
         self.controls.pause_button.clicked.connect(self.toggle_pause)
         self.controls.play_reverse_button.clicked.connect(self.play_reverse)
         self.controls.play_normal_button.clicked.connect(self.play_normal)
