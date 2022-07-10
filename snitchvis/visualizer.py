@@ -100,12 +100,6 @@ def parse_events(path):
         event = EventClass(username, snitch_name, nl_group, x, z, y, time)
         events.append(event)
 
-    # normalize all event times to the earliest event, and convert to ms
-    earliest_event_t = min(event.t for event in events)
-
-    for event in events:
-        event.t = int((event.t - earliest_event_t).total_seconds() * 1000)
-
     return events
 
 def parse_snitches(path, events):

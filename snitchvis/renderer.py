@@ -1,9 +1,11 @@
 from dataclasses import dataclass
+from datetime import timedelta
+from copy import deepcopy
 
 import numpy as np
 from PyQt6.QtGui import QBrush, QPen, QColor, QPalette, QPainter, QPainterPath
 from PyQt6.QtWidgets import QFrame
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QPointF, QRectF, QRect
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QPointF, QRectF
 
 from snitchvis.clock import Timer
 
@@ -12,14 +14,13 @@ WIDTH_LINE_RAW_VIEW = 2
 WIDTH_CROSS = 2
 LENGTH_CROSS = 6
 
+PEN_BLANK = QPen(QColor(0, 0, 0, 0))
 PEN_WHITE = QPen(QColor(200, 200, 200))
 # 23x23 square, light blue
 PEN_SNITCH_FIELD = QPen(QColor(93, 183, 223, 40))
 BRUSH_SNITCH_FIELD = QBrush(QColor(93, 183, 223, 40))
 # actual snitch block, white
 BRUSH_SNITCH_BLOCK = QBrush(QColor(200, 200, 200))
-# color of snitch field when a snitch was recently pinged, red
-BRUSH_SNITCH_PINGED = QBrush(QColor(219, 16, 9))
 
 GAMEPLAY_PADDING_WIDTH = 20
 GAMEPLAY_PADDING_HEIGHT = 20
@@ -36,6 +37,23 @@ class Renderer(QFrame):
         super().__init__()
         self.setMinimumSize(GAMEPLAY_WIDTH + GAMEPLAY_PADDING_WIDTH * 2,
             GAMEPLAY_HEIGHT + GAMEPLAY_PADDING_HEIGHT * 2)
+
+        # normalize all event times to the earliest event, and convert to ms
+        self.event_start_t = min(event.t for event in events)
+        self.event_end_t = max(event.t for event in events)
+        for event in events:
+            event.t = int((event.t - self.event_start_t).total_seconds() * 1000)
+
+        # get all unique usernames
+        usernames = {event.username for event in events}
+        self.users = []
+        for i, username in enumerate(usernames):
+            color = QColor().fromHslF(i / len(usernames), 0.75, 0.5)
+            user = User(username, color)
+            self.users.append(user)
+        # hash by username for convenience
+        self.users_by_username = {user.username: user for user in self.users}
+
 
         self.snitches = snitches
         self.events = events
@@ -204,55 +222,38 @@ class Renderer(QFrame):
         y = 15
         # x offset from edge of screen
         x_offset = 5
-
-        # draw time elapsed
         PEN_WHITE.setWidth(1)
         self.painter.setPen(PEN_WHITE)
         self.painter.setOpacity(1)
-        ms = round(self.clock.get_time())
-        text = f"{ms}"
-        self.painter.drawText(5, y, text)
-        # we don't use a monospaced font, so our ms text may vary by as much as
-        # 10 pixels in width (possibly more, haven't checked rigorously). If
-        # we just drew our minute:seconds text directly after it, the position
-        # of that text would constantly flicker left and right, since the ms
-        # text (and thus its width) changes every single frame. To fix this,
-        # only increment widths in multiples of 10. (This will not fix the issue
-        # if the text width happens to hover exactly around a multiple of 10,
-        # but there's not much to be done in that case).
-        text_width = self.painter.boundingRect(5, y, 0, 0, 0, text).width()
-        if text_width < 50:
-            x = 50
-        elif text_width < 60:
-            x = 60
-        elif text_width < 70:
-            x = 70
-        elif text_width < 80:
-            x = 80
+
+        start = self.event_start_t.strftime('%m/%d/%Y %H:%M')
+        # if the snitch log only covers a single day, don't show mm/dd/yyyy
+        # twice
+        if self.event_start_t.date() == self.event_end_t.date():
+            end = self.event_end_t.strftime('%H:%M')
+        # different days, show full date for each
         else:
-            # something crazy is going on, give up and just use text_width
-            x = text_width
+            end = self.event_end_t.strftime('%m/%d/%Y %H:%M')
+        self.painter.drawText(x_offset, y, f"Snitch Log {start} - {end}")
 
-        # now some dirty code to deal with negattive times
-        minutes = int(ms / (1000 * 60))
-        seconds = ms // 1000
-        seconds_negative = seconds < 0
-        # pytohn modulo returns positive even when ``seconds_total`` is negative
-        seconds = seconds % 60
-        if seconds_negative:
-            # ``seconds`` can be 0 and 59 but not 60, so use 59 instead of 60
-            seconds = 59 - seconds
-        sign = ""
-        if minutes < 0 or seconds_negative:
-            sign = "-"
-            minutes = abs(minutes)
-            seconds = abs(seconds)
+        # draw current time
+        y += 18
+        timedelta_in = timedelta(milliseconds=int(self.clock.get_time()))
+        current_t = self.event_start_t + timedelta_in
+        self.painter.drawText(x_offset, y, current_t.strftime('%m/%d/%Y %H:%M:%S'))
 
-        self.painter.drawText(x_offset + 5 + x, y,
-            f"ms ({sign}{minutes:01}:{seconds:02})")
+        # draw all usernames with corresponding colors
+        for user in self.users:
+            y += 16
+            self.painter.setPen(PEN_BLANK)
+            self.painter.setBrush(QBrush(user.color))
+            self.painter.drawRect(5, y - 9, 10, 10)
+            self.painter.setPen(PEN_WHITE)
+            self.painter.drawText(x_offset + 14, y, user.username)
 
+        self.painter.setPen(PEN_WHITE)
         # draw current mouse coordinates
-        y += 20
+        y += 16
         self.painter.drawText(x_offset, y,
             f"{int(self.current_mouse_x)}, {int(self.current_mouse_y)}")
 
@@ -275,10 +276,10 @@ class Renderer(QFrame):
             for event in snitch.events:
                 if not current_time - self.snitch_event_limit <= event.t <= current_time:
                     continue
-                brush = BRUSH_SNITCH_PINGED
-                c = brush.color()
-                c.setAlphaF(1 - (current_time - event.t) / self.snitch_event_limit)
-                brush.setColor(c)
+                user = self.users_by_username[event.username]
+                color = deepcopy(user.color)
+                color.setAlphaF(1 - (current_time - event.t) / self.snitch_event_limit)
+                brush = QBrush(color)
 
             self.draw_rectangle(snitch.x - 11, snitch.y - 11,
                 snitch.x + 12, snitch.y + 12, fill_with=brush)
@@ -414,18 +415,7 @@ class Renderer(QFrame):
         self.paused = False
         self.clock.resume()
 
-# not sure why dataclass won't generate a hash method for us automatically,
-# we're not using anything mutable, just ints
-@dataclass(unsafe_hash=True)
-class Rect:
-    """
-    A dataclass which mimics ``QRect`` and only serves as a hashable liaison of
-    ``QRect``.
-    """
-    x: int
-    y: int
-    width: int
-    height: int
-
-    def toQRect(self):
-        return QRect(self.x, self.y, self.width, self.height)
+@dataclass
+class User:
+    username: str
+    color: QColor
