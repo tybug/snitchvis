@@ -1,11 +1,13 @@
 from PyQt6.QtWidgets import (QFrame, QGridLayout, QLabel, QVBoxLayout)
 from PyQt6.QtGui import QIcon
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 
 from snitchvis.utils import resource_path
-from snitchvis.widgets import JumpSlider, PushButton
+from snitchvis.widgets import JumpSlider, PushButton, SliderSetting
 
 class VisualizerControls(QFrame):
+
+    snitch_event_changed = pyqtSignal(int)
 
     def __init__(self, speed):
         super().__init__()
@@ -50,6 +52,9 @@ class VisualizerControls(QFrame):
         self.settings_button.clicked.connect(self.settings_button_clicked)
 
         self.settings_popup = SettingsPopup(self)
+        self.settings_popup.snitch_event_limit.value_changed.connect(
+            self.snitch_event_changed
+        )
 
         self.speed_up_button = PushButton()
         self.speed_up_button.setIcon(QIcon(resource_path("speed_up.png")))
@@ -101,9 +106,11 @@ class SettingsPopup(QFrame):
         # we're technically a window, but we don't want to be shown as such to
         # the user, so hide our window features (like the top bar)
         self.setWindowFlags(Qt.WindowType.Popup)
-
         self.setMaximumWidth(300)
         self.setMaximumHeight(100)
 
+        self.snitch_event_limit = SliderSetting("Snitch Event Limit", 5, 1, 120)
+
         layout = QVBoxLayout()
+        layout.addWidget(self.snitch_event_limit)
         self.setLayout(layout)
