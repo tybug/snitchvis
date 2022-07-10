@@ -13,8 +13,8 @@ WIDTH_LINE_RAW_VIEW = 2
 WIDTH_CROSS = 2
 LENGTH_CROSS = 6
 
-PEN_BLANK = QPen(QColor(0, 0, 0, 0))
-PEN_WHITE = QPen(QColor(200, 200, 200))
+# white
+TEXT_COLOR = QColor(200, 200, 200)
 # 23x23 square, light blue
 SNITCH_FIELD_COLOR = QColor(93, 183, 223)
 # actual snitch block, white
@@ -216,9 +216,7 @@ class Renderer(QFrame):
         y = 15
         # x offset from edge of screen
         x_offset = 5
-        PEN_WHITE.setWidth(1)
-        self.painter.setPen(PEN_WHITE)
-        self.painter.setOpacity(1)
+
 
         start = self.event_start_t.strftime('%m/%d/%Y %H:%M')
         # if the snitch log only covers a single day, don't show mm/dd/yyyy
@@ -228,27 +226,33 @@ class Renderer(QFrame):
         # different days, show full date for each
         else:
             end = self.event_end_t.strftime('%m/%d/%Y %H:%M')
-        self.painter.drawText(x_offset, y, f"Snitch Log {start} - {end}")
+        self.draw_text(x_offset, y, f"Snitch Log {start} - {end}")
 
         # draw current time
         y += 18
         timedelta_in = timedelta(milliseconds=int(self.clock.get_time()))
         current_t = self.event_start_t + timedelta_in
-        self.painter.drawText(x_offset, y, current_t.strftime('%m/%d/%Y %H:%M:%S'))
+        self.draw_text(x_offset, y, current_t.strftime('%m/%d/%Y %H:%M:%S'))
 
         # draw all usernames with corresponding colors
         for user in self.users:
             y += 16
-            self.painter.setOpacity(1 if user.enabled else 0.4)
 
-            self.painter.setPen(PEN_BLANK)
-            self.painter.setBrush(QBrush(user.color))
-            self.painter.drawRect(5, y - 9, 10, 10)
-            self.painter.setPen(PEN_WHITE)
+            alpha = 1 if user.enabled else 0.4
+            start_x = 5
+            start_y = y - 9
+            self.draw_rectangle(start_x, start_y, start_x + 10, start_y + 10,
+                color=user.color, alpha=alpha, scaled=False)
+
             text = user.username
-            self.painter.drawText(x_offset + 14, y, text)
+            self.draw_text(x_offset + 14, y, text, alpha=alpha)
 
+            # bounding rects require that we have a pen set, or else it will
+            # (correctly) return QRect(0, 0, 0, 0), as the text won't actually
+            # be visible.
+            self.painter.setPen(QPen(TEXT_COLOR))
             info_pos = self.painter.boundingRect(5, y - 9, 0, 0, 0, text)
+            self.painter.setPen(Qt.PenStyle.NoPen)
             rect = QRect(info_pos.x(), info_pos.y(), info_pos.width(),
                 info_pos.height())
             # some manual adjustments, not sure why these are necessary
@@ -256,11 +260,9 @@ class Renderer(QFrame):
             rect.setWidth(rect.width() + 17)
             user.info_pos_rect = rect
 
-        self.painter.setOpacity(1)
-        self.painter.setPen(PEN_WHITE)
         # draw current mouse coordinates
         y += 16
-        self.painter.drawText(x_offset, y,
+        self.draw_text(x_offset, y,
             f"{int(self.current_mouse_x)}, {int(self.current_mouse_y)}")
 
     def paint_snitches(self):
@@ -295,7 +297,7 @@ class Renderer(QFrame):
                 color=SNITCH_BLOCK_COLOR)
 
     def draw_rectangle(self, start_x, start_y, end_x, end_y, *, color, alpha=1,
-        width=1
+        width=1, scaled=True
     ):
         color = QColor(color.red(), color.green(), color.blue())
         pen = QPen(color)
@@ -304,8 +306,12 @@ class Renderer(QFrame):
         self.painter.setOpacity(alpha)
         self.painter.setBrush(QBrush(color))
 
-        start = self.scaled_point(start_x, start_y)
-        end = self.scaled_point(end_x, end_y)
+        if scaled:
+            start = self.scaled_point(start_x, start_y)
+            end = self.scaled_point(end_x, end_y)
+        else:
+            start = QPointF(start_x, start_y)
+            end = QPointF(end_x, end_y)
         rect = QRectF(start, end)
         self.painter.drawRect(rect)
 
@@ -315,6 +321,13 @@ class Renderer(QFrame):
         self.painter.setOpacity(alpha)
         self.painter.drawLine(self.scaled_point(start_x, start_y),
             self.scaled_point(end_x, end_y))
+
+    def draw_text(self, x, y, text, alpha=1):
+        pen = self.painter.pen()
+        self.painter.setPen(QPen(TEXT_COLOR))
+        self.painter.setOpacity(alpha)
+        self.painter.drawText(x, y, text)
+        self.painter.setPen(pen)
 
     def next_event(self, reverse=False):
         current_time = self.clock.get_time()
