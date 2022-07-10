@@ -3,9 +3,10 @@ from datetime import timedelta
 from copy import deepcopy
 
 import numpy as np
-from PyQt6.QtGui import QBrush, QPen, QColor, QPalette, QPainter, QPainterPath
+from PyQt6.QtGui import (QBrush, QPen, QColor, QPalette, QPainter, QPainterPath,
+    QCursor)
 from PyQt6.QtWidgets import QFrame
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QPointF, QRectF
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QPointF, QRectF, QRect
 
 from snitchvis.clock import Timer
 
@@ -245,12 +246,24 @@ class Renderer(QFrame):
         # draw all usernames with corresponding colors
         for user in self.users:
             y += 16
+            self.painter.setOpacity(1 if user.enabled else 0.4)
+
             self.painter.setPen(PEN_BLANK)
             self.painter.setBrush(QBrush(user.color))
             self.painter.drawRect(5, y - 9, 10, 10)
             self.painter.setPen(PEN_WHITE)
-            self.painter.drawText(x_offset + 14, y, user.username)
+            text = user.username
+            self.painter.drawText(x_offset + 14, y, text)
 
+            info_pos = self.painter.boundingRect(5, y - 9, 0, 0, 0, text)
+            rect = QRect(info_pos.x(), info_pos.y(), info_pos.width(),
+                info_pos.height())
+            # some manual adjustments, not sure why these are necessary
+            rect.setHeight(rect.height() - 3)
+            rect.setWidth(rect.width() + 17)
+            user.info_pos_rect = rect
+
+        self.painter.setOpacity(1)
         self.painter.setPen(PEN_WHITE)
         # draw current mouse coordinates
         y += 16
@@ -277,6 +290,9 @@ class Renderer(QFrame):
                 if not current_time - self.snitch_event_limit <= event.t <= current_time:
                     continue
                 user = self.users_by_username[event.username]
+                # don't draw events from disabled users
+                if not user.enabled:
+                    continue
                 color = deepcopy(user.color)
                 color.setAlphaF(1 - (current_time - event.t) / self.snitch_event_limit)
                 brush = QBrush(color)
@@ -396,10 +412,29 @@ class Renderer(QFrame):
         assert self.max_x - self.min_x == self.max_y - self.min_y
         self.current_mouse_x = self.min_x + ratio_x * (self.max_x - self.min_x)
         self.current_mouse_y = self.min_y + ratio_y * (self.max_y - self.min_y)
-        # update mouse coords if we're paused
+
+        cursor = QCursor(Qt.CursorShape.ArrowCursor)
+        for user in self.users:
+            if user.info_pos_rect.contains(event.pos()):
+                cursor = QCursor(Qt.CursorShape.PointingHandCursor)
+        self.setCursor(cursor)
+
+        # update in case we're paused
         self.update()
 
         return super().mouseMoveEvent(event)
+
+    def mousePressEvent(self, event):
+        for user in self.users:
+            rect = user.info_pos_rect
+            if not rect.contains(event.pos()):
+                continue
+            user.enabled = not user.enabled
+
+        # in case this mouse press enabled/disabled any players and we're
+        # paused, update once
+        self.update()
+        return super().mousePressEvent(event)
 
     def pause(self):
         """
@@ -419,3 +454,6 @@ class Renderer(QFrame):
 class User:
     username: str
     color: QColor
+    # init with an empty qrect, we'll set the actual info pos later
+    info_pos_rect: QRect = QRect(0, 0, 0, 0)
+    enabled: bool = True
