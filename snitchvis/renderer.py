@@ -56,7 +56,7 @@ class Renderer(QFrame):
 
 
         self.snitches = snitches
-        self.events = events
+        self.events = sorted(events, key = lambda event: event.t)
         self.current_mouse_x = 0
         self.current_mouse_y = 0
         # 5 minutes in ms
