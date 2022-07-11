@@ -129,6 +129,7 @@ class TimeSlider(JumpSlider):
     def paintEvent(self, event):
         super().paintEvent(event)
         painter = QPainter(self)
+        painter.setOpacity(0.8)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
         # add some vertical padding
