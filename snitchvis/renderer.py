@@ -292,7 +292,7 @@ class Renderer(QFrame):
         # actual snitch blocks. only draw if our snitch bounding box is
         # sufficiently large, otherwise these will just appear as single white
         # pixels and won't look good
-        if self.max_x - self.min_x < 200:
+        if self.max_x - self.min_x < 500:
             for snitch in self.snitches:
                 self.draw_rectangle(snitch.x, snitch.y, snitch.x + 1, snitch.y + 1,
                     color=SNITCH_BLOCK_COLOR)
