@@ -96,7 +96,7 @@ class Renderer(QFrame):
         pal = QPalette()
         pal.setColor(QPalette.ColorGroup.Normal,
             QPalette.ColorRole.Window, Qt.GlobalColor.black)
-        # also set when in background
+        # also set when app is in background
         pal.setColor(QPalette.ColorGroup.Inactive,
             QPalette.ColorRole.Window, Qt.GlobalColor.black)
         self.setAutoFillBackground(True)
