@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (QFrame, QPushButton, QSlider, QLabel, QCheckBox,
     QHBoxLayout, QSpinBox, QComboBox, QStyle)
-from PyQt6.QtGui import QCursor
+from PyQt6.QtGui import QCursor, QPalette, QColor
 from PyQt6.QtCore import Qt, pyqtSignal
 
 # we want most of our clickable widgets to have a pointing hand cursor on hover
@@ -121,6 +121,19 @@ class JumpSlider(QSlider):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+
+        accent = QColor(71, 174, 247)
+        p = QPalette()
+        # our global palette needs to keep ColorRole.Highlight as dark grey,
+        # because that's the color used for highlighted text without focus,
+        # which doesn't make sense to keep as our blue accent.
+        # However, QSliders seem to use the Highlight color role as the color
+        # for the slider bar, so we need to override that locally here to
+        # keep the nice blue accent color even when the app is in the
+        # background.
+        p.setColor(QPalette.ColorGroup.Inactive, QPalette.ColorRole.Highlight, accent)
+        self.setPalette(p)
+
 
     def mousePressEvent(self, event):
         self.setValue(QStyle.sliderValueFromPosition(self.minimum(),
