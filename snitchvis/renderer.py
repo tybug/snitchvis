@@ -268,6 +268,8 @@ class Renderer(QFrame):
             self.draw_rectangle(snitch.x - 11, snitch.y - 11,
                 snitch.x + 12, snitch.y + 12, color=SNITCH_FIELD_COLOR,
                 alpha=0.23)
+
+        # snitch events
         for snitch in self.snitches:
             color = None
             alpha = None
@@ -287,9 +289,13 @@ class Renderer(QFrame):
             self.draw_rectangle(snitch.x - 11, snitch.y - 11, snitch.x + 12,
                 snitch.y + 12, color=color, alpha=alpha)
 
-        for snitch in self.snitches:
-            self.draw_rectangle(snitch.x, snitch.y, snitch.x + 1, snitch.y + 1,
-                color=SNITCH_BLOCK_COLOR)
+        # actual snitch blocks. only draw if our snitch bounding box is
+        # sufficiently large, otherwise these will just appear as single white
+        # pixels and won't look good
+        if self.max_x - self.min_x < 200:
+            for snitch in self.snitches:
+                self.draw_rectangle(snitch.x, snitch.y, snitch.x + 1, snitch.y + 1,
+                    color=SNITCH_BLOCK_COLOR)
 
     def draw_rectangle(self, start_x, start_y, end_x, end_y, *, color, alpha=1,
         scaled=True
