@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 import numpy as np
-from PyQt6.QtGui import QColor, QPalette, QPainter, QCursor
+from PyQt6.QtGui import QColor, QPalette, QPainter, QCursor, QImage
 from PyQt6.QtWidgets import QFrame
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QPointF, QRectF, QRect
 
@@ -76,7 +76,8 @@ class Renderer(QFrame):
             self.max_y += (dist_diff / 2)
             self.min_y -= (dist_diff / 2)
 
-        self.painter = QPainter()
+        self.painter = None
+        self.image = None
 
         self.setMouseTracking(True)
 
@@ -104,6 +105,11 @@ class Renderer(QFrame):
 
         self.next_frame()
 
+    def paint_width(self):
+        return self.painter.device().width()
+
+    def paint_height(self):
+        return self.painter.device().height()
 
     def scaled_x(self, x):
         # * snitch cordinates: relative to the civmc map. eg -6750, 2300
@@ -123,8 +129,8 @@ class Renderer(QFrame):
 
         # Figure out the width of the draw area so we can scale our snitch
         # coordinates accordingly.
-        draw_width = self.width() - 2 * GAMEPLAY_PADDING_WIDTH
-        draw_height = self.height() - 2 * GAMEPLAY_PADDING_HEIGHT
+        draw_width = self.paint_width() - 2 * GAMEPLAY_PADDING_WIDTH
+        draw_height = self.paint_height() - 2 * GAMEPLAY_PADDING_HEIGHT
         # draw area is always a square, so just pick the least of the two
         draw_size = min(draw_width, draw_height)
         # how far in to the snitch bounding box are we?
@@ -138,12 +144,12 @@ class Renderer(QFrame):
         # than it is tall, we'll have extra padding that we didn't account for.
         # figure out how much wider than tall we are (if at all) and pad by half
         # that amount to center us.
-        draw_area_coords += max(self.width() - self.height(), 0) / 2
+        draw_area_coords += max(self.paint_width() - self.paint_height(), 0) / 2
         return draw_area_coords
 
     def scaled_y(self, y):
-        draw_width = self.width() - 2 * GAMEPLAY_PADDING_WIDTH
-        draw_height = self.height() - 2 * GAMEPLAY_PADDING_HEIGHT
+        draw_width = self.paint_width() - 2 * GAMEPLAY_PADDING_WIDTH
+        draw_height = self.paint_height() - 2 * GAMEPLAY_PADDING_HEIGHT
         draw_size = min(draw_width, draw_height)
         # how far in to the snitch bounding box are we?
         snitch_bounding_box_ratio = (y - self.min_y) / (self.max_y - self.min_y)
@@ -153,7 +159,7 @@ class Renderer(QFrame):
         # pad by GAMEPLAY_PADDING_HEIGHT to get the view coordinates
         draw_area_coords += GAMEPLAY_PADDING_HEIGHT
         # add additional padding if we're taller than we are wide
-        draw_area_coords += max(self.height() - self.width(), 0) / 2
+        draw_area_coords += max(self.paint_height() - self.paint_width(), 0) / 2
         return draw_area_coords
 
 
@@ -194,7 +200,14 @@ class Renderer(QFrame):
         """
         Called whenever self.update() is called
         """
-        self.painter.begin(self)
+        # TODO proper option here
+        if False:
+            self.painter = QPainter(self)
+        else:
+            self.image = QImage(self.width(), self.height(), QImage.Format.Format_RGB32)
+            self.image.fill(Qt.GlobalColor.black)
+            self.painter = QPainter(self.image)
+
         self.painter.setRenderHint(QPainter.RenderHint.TextAntialiasing, True)
         self.painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
@@ -204,6 +217,8 @@ class Renderer(QFrame):
         self.paint_snitches()
 
         self.painter.end()
+
+        self.image.save(f"images2/test-{int(self.clock.get_time())}.png")
 
     def paint_info(self):
         # our current y coordinate for drawing info. Modified throughout this
@@ -374,12 +389,12 @@ class Renderer(QFrame):
         # to in-game coordinates.
 
         # how wide is the snitch bounding box in pixels?
-        draw_width = self.width() - 2 * GAMEPLAY_PADDING_WIDTH
-        draw_height = self.height() - 2 * GAMEPLAY_PADDING_HEIGHT
+        draw_width = self.paint_width() - 2 * GAMEPLAY_PADDING_WIDTH
+        draw_height = self.paint_height() - 2 * GAMEPLAY_PADDING_HEIGHT
         draw_size = min(draw_width, draw_height)
 
-        x -= GAMEPLAY_PADDING_WIDTH + max(self.width() - self.height(), 0) / 2
-        y -= GAMEPLAY_PADDING_HEIGHT + max(self.height() - self.width(), 0) / 2
+        x -= GAMEPLAY_PADDING_WIDTH + max(self.paint_width() - self.paint_height(), 0) / 2
+        y -= GAMEPLAY_PADDING_HEIGHT + max(self.paint_height() - self.paint_width(), 0) / 2
 
         # how far in to the snitch bounding box are we?
         ratio_x = x / draw_size
