@@ -29,12 +29,12 @@ class VisualizerControls(QFrame):
         self.next_frame_button = PushButton()
         self.next_frame_button.setIcon(QIcon(resource_path("frame_next.png")))
         self.next_frame_button.setFixedSize(20, 20)
-        self.next_frame_button.setToolTip("Move forward one frame")
+        self.next_frame_button.setToolTip("Jump to next event")
 
         self.previous_frame_button = PushButton()
         self.previous_frame_button.setIcon(QIcon(resource_path("frame_back.png")))
         self.previous_frame_button.setFixedSize(20, 20)
-        self.previous_frame_button.setToolTip("Move backward one frame")
+        self.previous_frame_button.setToolTip("Jump to previous events")
 
         self.pause_button = PushButton()
         self.pause_button.setIcon(QIcon(resource_path("pause.png")))
