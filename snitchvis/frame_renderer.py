@@ -20,7 +20,7 @@ GAMEPLAY_PADDING_HEIGHT = 20
 GAMEPLAY_WIDTH = 600
 GAMEPLAY_HEIGHT = 450
 
-
+# TODO does this even need to be a qobject?
 class FrameRenderer(QObject):
     """
     Core of the drawing / painting occurs here. Responsible for drawing a single
@@ -33,7 +33,7 @@ class FrameRenderer(QObject):
     object.
     """
     def __init__(self, paint_object, snitches, events, users, show_all_snitches,
-        event_start_td, callback=lambda: None,
+        event_start_td
     ):
         super().__init__()
 
@@ -76,7 +76,6 @@ class FrameRenderer(QObject):
             self.min_y -= (dist_diff / 2)
 
         self.paint_object = paint_object
-        self.callback = callback
 
         self.playback_start = 0
         self.playback_end = max(event.t for event in events)
@@ -159,8 +158,6 @@ class FrameRenderer(QObject):
         self.paint_snitches()
 
         self.painter.end()
-
-        self.callback()
 
 
     def paint_info(self):
