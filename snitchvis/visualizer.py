@@ -137,8 +137,14 @@ class Snitchvis(QMainWindow):
         events = parse_events(event_file)
         events = sorted(events, key = lambda event: event.t)
         snitches = parse_snitches(snitch_db, events)
+
+        # normalize all event times to the earliest event, and convert to ms
+        event_start_td = min(event.t for event in events)
+        for event in events:
+            event.t = int((event.t - event_start_td).total_seconds() * 1000)
+
         self.interface = Interface(snitches, events, speeds, start_speed,
-            show_all_snitches)
+            show_all_snitches, event_start_td)
         self.interface.renderer.loaded_signal.connect(self.on_load)
         self.setCentralWidget(self.interface)
 

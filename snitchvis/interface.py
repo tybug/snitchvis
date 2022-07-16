@@ -9,7 +9,7 @@ from snitchvis.controls import VisualizerControls
 
 class Interface(QWidget):
     def __init__(self, snitches, events, speeds, start_speed,
-        show_all_snitches):
+        show_all_snitches, event_start_td):
         super().__init__()
         self.speeds = speeds
 
@@ -21,7 +21,7 @@ class Interface(QWidget):
             users.append(user)
 
         self.renderer = Renderer(snitches, events, users, start_speed,
-            show_all_snitches)
+            show_all_snitches, event_start_td)
         self.renderer.update_time_signal.connect(self.update_slider)
         # if the renderer wants to pause itself (eg when the playback hits the
         # end of the replay), we kick it back to us (the `Interface`) so we can
