@@ -8,8 +8,8 @@ from snitchvis.renderer import Renderer
 from snitchvis.controls import VisualizerControls
 
 class Interface(QWidget):
-    def __init__(self, snitches, events, users, speeds, start_speed,
-        show_all_snitches, event_start_td):
+    def __init__(self, snitches, events, users, event_start_td, speeds,
+        start_speed, show_all_snitches):
         super().__init__()
         self.speeds = speeds
 

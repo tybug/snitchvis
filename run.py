@@ -32,8 +32,8 @@ if args.record:
     vis = SnitchVisRecord(snitches, events, users, show_all_snitches,
         event_start_td)
 else:
-    vis = SnitchvisApp(events, snitches, users, event_start_td,
-        [0.25, 0.5, 1, 2.5, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000],
-        show_all_snitches)
+    vis = SnitchvisApp(snitches, events, users, event_start_td,
+        speeds=[0.25, 0.5, 1, 2.5, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000],
+        show_all_snitches=show_all_snitches)
 
 vis.exec()
