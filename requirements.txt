@@ -1,2 +1,3 @@
 numpy # only used for `searchsorted`, can probably be removed easily
 PyQt6
+PIL

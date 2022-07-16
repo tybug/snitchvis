@@ -2,12 +2,15 @@ from dataclasses import dataclass
 import re
 from datetime import datetime
 import sqlite3
+from subprocess import Popen, PIPE
 
 import numpy as np
-from PyQt6.QtGui import QPalette, QColor, QShortcut
+from PIL.ImageQt import fromqimage
+from PyQt6.QtGui import QPalette, QColor, QShortcut, QImage
 from PyQt6.QtWidgets import QMainWindow, QApplication
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer, QRect
 
+from snitchvis.frame_renderer import FrameRenderer
 from snitchvis.interface import Interface
 
 PREVIOUS_ERRSTATE = np.seterr('raise')
@@ -67,6 +70,15 @@ class Login(Event):
     pass
 
 
+@dataclass
+class User:
+    username: str
+    color: QColor
+    # init with an empty qrect, we'll set the actual info pos later (when used
+    # by Renderer anyway)
+    # TODO extract this out, this shouldn't live in the user class
+    info_pos_rect: QRect = QRect(0, 0, 0, 0)
+    enabled: bool = True
 
 def parse_events(path):
     events = []
@@ -102,7 +114,13 @@ def parse_events(path):
         event = EventClass(username, snitch_name, nl_group, x, z, y, time)
         events.append(event)
 
-    return events
+    event_start_td = min(event.t for event in events)
+    # normalize all event times to the earliest event, and convert to ms
+    for event in events:
+        event.t = int((event.t - event_start_td).total_seconds() * 1000)
+    events = sorted(events, key = lambda event: event.t)
+
+    return event_start_td, events
 
 def parse_snitches(path, events):
     conn = sqlite3.connect(path)
@@ -122,10 +140,19 @@ def parse_snitches(path, events):
         snitch.events.append(event)
     return snitches
 
+def create_users(events):
+    users = []
+    usernames = {event.username for event in events}
+    for i, username in enumerate(usernames):
+        color = QColor().fromHslF(i / len(usernames), 0.75, 0.5)
+        user = User(username, color)
+        users.append(user)
+
+    return users
 
 
 class Snitchvis(QMainWindow):
-    def __init__(self, snitch_db, event_file,
+    def __init__(self, events, snitches, users, event_start_td,
         speeds=[0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 3.0, 5.0, 10.0],
         start_speed=1,
         show_all_snitches=False
@@ -134,16 +161,8 @@ class Snitchvis(QMainWindow):
 
         self.setAutoFillBackground(True)
         self.setWindowTitle("SnitchVis")
-        events = parse_events(event_file)
-        events = sorted(events, key = lambda event: event.t)
-        snitches = parse_snitches(snitch_db, events)
 
-        # normalize all event times to the earliest event, and convert to ms
-        event_start_td = min(event.t for event in events)
-        for event in events:
-            event.t = int((event.t - event_start_td).total_seconds() * 1000)
-
-        self.interface = Interface(snitches, events, speeds, start_speed,
+        self.interface = Interface(snitches, events, users, speeds, start_speed,
             show_all_snitches, event_start_td)
         self.interface.renderer.loaded_signal.connect(self.on_load)
         self.setCentralWidget(self.interface)
@@ -203,18 +222,19 @@ class SnitchvisApp(QApplication):
     """
     ``speeds`` must contain ``start_speed``, ``1``, ``0.75``, and ``1.5``.
     """
-    def __init__(self, snitch_db, event_file,
+    def __init__(self, events, snitches, users, event_start_td,
         speeds=[0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 3.0, 5.0, 10.0],
-        start_speed=1,
-        show_all_snitches=False
+        start_speed=1, show_all_snitches=False
     ):
         super().__init__([])
         self.setStyle("Fusion")
         self.setApplicationName("Circlevis")
 
         self.visualizer = None
-        self.snitch_db = snitch_db
-        self.event_file = event_file
+        self.snitches = snitches
+        self.events = events
+        self.users = users
+        self.event_start_td = event_start_td
         self.speeds = speeds
         self.start_speed = start_speed
         self.show_all_snitches = show_all_snitches
@@ -228,8 +248,9 @@ class SnitchvisApp(QApplication):
         # we can't create this in ``__init__`` because we can't instantiate a
         # ``QWidget`` before a ``QApplication``, so delay until here, which is
         # all it's necessary for.
-        self.visualizer = Snitchvis(self.snitch_db, self.event_file, self.speeds,
-            self.start_speed, self.show_all_snitches)
+        self.visualizer = Snitchvis(self.events, self.snitches, self.users,
+            self.event_start_td, self.speeds, self.start_speed,
+            self.show_all_snitches)
         self.visualizer.interface.renderer.loaded_signal.connect(self.on_load)
         self.visualizer.show()
         super().exec()
@@ -299,3 +320,73 @@ class SnitchvisApp(QApplication):
         ready to display gameplay.
         """
         pass
+
+
+class SnitchVisRecord(QApplication):
+    def __init__(self, snitches, events, users, show_all_snitches,
+        event_start_td):
+        # https://stackoverflow.com/q/13215120
+        super().__init__(['-platform', 'minimal'])
+
+        self.snitches = snitches
+        self.events = events
+        self.users = users
+        self.show_all_snitches = show_all_snitches
+        self.event_start_td = event_start_td
+
+        QTimer.singleShot(0, self.start)
+
+    def start(self):
+        pass
+
+    def exec(self):
+        renderer = FrameRenderer(None, self.snitches, self.events, self.users,
+            self.show_all_snitches, self.event_start_td)
+
+        images = []
+        # frames per second
+        framerate = 30
+        # seconds
+        video_duration = 10
+
+        actual_duration = renderer.event_end_td - renderer.event_start_td
+        actual_duration = actual_duration.total_seconds()
+
+        # our video is `actual_duration` seconds long, and we need to compress
+        # that into `video_duration` seconds at `framerate` fps.
+        # we have `framerate * video_duration` frames to work with, and each
+        # frame needs to take `actual_duration / num_frames` seconds
+
+        num_frames = int(video_duration * framerate)
+        # in ms
+        frame_duration = (actual_duration / num_frames) * 1000
+
+        for i in range(num_frames):
+            print(f"rendering image {i} / {num_frames}")
+            image = QImage(1000, 1000, QImage.Format.Format_RGB32)
+            image.fill(Qt.GlobalColor.black)
+
+            renderer.paint_object = image
+            renderer.t = int(i * frame_duration)
+            renderer.render()
+
+            im = fromqimage(image)
+            images.append(im)
+
+        # https://stackoverflow.com/a/13298538
+        # -y overwrites output file if exists
+        # -r specifies framerate (frames per second)
+        p = Popen(["ffmpeg", "-y", "-f", "image2pipe", "-r", str(framerate),
+            "-vcodec", "mjpeg", "-pix_fmt", "yuv420p", "-i", "-", "-vf",
+            "scale=1000:1000", "out_ffmpeg.mp4"],
+            stdin=PIPE)
+
+        for i, im in enumerate(images):
+            print(f"saving image {i} to stdin")
+            im.save(p.stdin, "JPEG")
+        p.stdin.close()
+
+        print("converting images to video with ffmpeg")
+        p.wait()
+
+        QApplication.quit()

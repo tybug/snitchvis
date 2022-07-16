@@ -1,5 +1,7 @@
-from snitchvis.visualizer import Snitchvis, SnitchvisApp
+from snitchvis.visualizer import (Snitchvis, SnitchvisApp, parse_events,
+    parse_snitches, SnitchVisRecord, create_users)
 
 __all__ = [
-    "Snitchvis", "SnitchvisApp"
+    "Snitchvis", "SnitchvisApp", "SnitchVisRecord", "parse_events",
+    "parse_snitches", "create_users"
 ]

@@ -8,17 +8,10 @@ from snitchvis.renderer import Renderer
 from snitchvis.controls import VisualizerControls
 
 class Interface(QWidget):
-    def __init__(self, snitches, events, speeds, start_speed,
+    def __init__(self, snitches, events, users, speeds, start_speed,
         show_all_snitches, event_start_td):
         super().__init__()
         self.speeds = speeds
-
-        users = []
-        usernames = {event.username for event in events}
-        for i, username in enumerate(usernames):
-            color = QColor().fromHslF(i / len(usernames), 0.75, 0.5)
-            user = User(username, color)
-            users.append(user)
 
         self.renderer = Renderer(snitches, events, users, start_speed,
             show_all_snitches, event_start_td)
@@ -135,12 +128,3 @@ class Combined(QFrame):
                 layout.addWidget(widget, i, 0, 1, 1)
 
         self.setLayout(layout)
-
-@dataclass
-class User:
-    username: str
-    color: QColor
-    # init with an empty qrect, we'll set the actual info pos later (when used
-    # by Renderer anyway)
-    info_pos_rect: QRect = QRect(0, 0, 0, 0)
-    enabled: bool = True
