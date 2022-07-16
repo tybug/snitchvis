@@ -3,11 +3,6 @@ from datetime import timedelta
 from PyQt6.QtGui import QColor, QPainter
 from PyQt6.QtCore import Qt, QPointF, QRectF, QRect, QObject
 
-WIDTH_LINE = 1
-WIDTH_LINE_RAW_VIEW = 2
-WIDTH_CROSS = 2
-LENGTH_CROSS = 6
-
 # white
 TEXT_COLOR = QColor(200, 200, 200)
 # 23x23 square, light blue

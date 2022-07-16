@@ -1,23 +1,11 @@
 
 import numpy as np
-from PyQt6.QtGui import QColor, QPalette, QCursor
+from PyQt6.QtGui import QPalette, QCursor
 from PyQt6.QtWidgets import QFrame
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 
 from snitchvis.clock import Timer
 from snitchvis.frame_renderer import FrameRenderer
-
-WIDTH_LINE = 1
-WIDTH_LINE_RAW_VIEW = 2
-WIDTH_CROSS = 2
-LENGTH_CROSS = 6
-
-# white
-TEXT_COLOR = QColor(200, 200, 200)
-# 23x23 square, light blue
-SNITCH_FIELD_COLOR = QColor(93, 183, 223)
-# actual snitch block, white
-SNITCH_BLOCK_COLOR = QColor(200, 200, 200)
 
 GAMEPLAY_PADDING_WIDTH = 20
 GAMEPLAY_PADDING_HEIGHT = 20
