@@ -1,8 +1,7 @@
 from datetime import timedelta
 
-from PyQt6.QtGui import QColor, QPalette, QPainter
-from PyQt6.QtWidgets import QFrame
-from PyQt6.QtCore import Qt, QPointF, QRectF, QRect
+from PyQt6.QtGui import QColor, QPainter
+from PyQt6.QtCore import Qt, QPointF, QRectF, QRect, QObject
 
 WIDTH_LINE = 1
 WIDTH_LINE_RAW_VIEW = 2
@@ -22,9 +21,16 @@ GAMEPLAY_WIDTH = 600
 GAMEPLAY_HEIGHT = 450
 
 
-class FrameRenderer(QFrame):
+class FrameRenderer(QObject):
     """
-    Handles drawing a single frame at a specified time.
+    Core of the drawing / painting occurs here. Responsible for drawing a single
+    frame at a particular time to a generic paint object.
+
+    Higher level code will handle changing the time and redrawing frames using
+    this class as necessary.
+
+    Originally split to allow drawing to either an image or a desktop renderer
+    object.
     """
     def __init__(self, paint_object, snitches, events, users, show_all_snitches,
         event_start_td, callback=lambda: None,
@@ -80,16 +86,6 @@ class FrameRenderer(QFrame):
         self.play_direction = 1
 
         self.t = 0
-
-        # black background
-        pal = QPalette()
-        pal.setColor(QPalette.ColorGroup.Normal,
-            QPalette.ColorRole.Window, Qt.GlobalColor.black)
-        # also set when app is in background
-        pal.setColor(QPalette.ColorGroup.Inactive,
-            QPalette.ColorRole.Window, Qt.GlobalColor.black)
-        self.setAutoFillBackground(True)
-        self.setPalette(pal)
 
     def paint_width(self):
         return self.painter.device().width()
