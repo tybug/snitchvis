@@ -71,12 +71,6 @@ class Renderer(QFrame):
 
         self.next_frame()
 
-    def paint_width(self):
-        return self.frame_renderer.painter.device().width()
-
-    def paint_height(self):
-        return self.frame_renderer.painter.device().height()
-
     def next_frame_from_timer(self):
         """
         Has the same effect as next_frame except if paused, where it returns.
@@ -152,13 +146,15 @@ class Renderer(QFrame):
         # convert local screen coordinates (where 0,0 is the upper left corner)
         # to in-game coordinates.
 
+        paint_width = self.frame_renderer.paint_width()
+        paint_height = self.frame_renderer.paint_height()
         # how wide is the snitch bounding box in pixels?
-        draw_width = self.paint_width() - 2 * GAMEPLAY_PADDING_WIDTH
-        draw_height = self.paint_height() - 2 * GAMEPLAY_PADDING_HEIGHT
+        draw_width = paint_width - 2 * GAMEPLAY_PADDING_WIDTH
+        draw_height = paint_height - 2 * GAMEPLAY_PADDING_HEIGHT
         draw_size = min(draw_width, draw_height)
 
-        x -= GAMEPLAY_PADDING_WIDTH + max(self.paint_width() - self.paint_height(), 0) / 2
-        y -= GAMEPLAY_PADDING_HEIGHT + max(self.paint_height() - self.paint_width(), 0) / 2
+        x -= GAMEPLAY_PADDING_WIDTH + max(paint_width - paint_height, 0) / 2
+        y -= GAMEPLAY_PADDING_HEIGHT + max(paint_height - paint_width, 0) / 2
 
         # how far in to the snitch bounding box are we?
         ratio_x = x / draw_size
