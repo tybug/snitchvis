@@ -10,7 +10,7 @@ input.txt
 input2.txt
 snitches.sqlite
 test.py
-sandbox.py
+sandbox/
 images/
 images2/
 
