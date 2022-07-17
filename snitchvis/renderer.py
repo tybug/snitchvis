@@ -134,8 +134,8 @@ class Renderer(QFrame):
         # convert local screen coordinates (where 0,0 is the upper left corner)
         # to in-game coordinates.
 
-        paint_width = self.frame_renderer.paint_width()
-        paint_height = self.frame_renderer.paint_height()
+        paint_width = self.frame_renderer.paint_width
+        paint_height = self.frame_renderer.paint_height
         # how wide is the snitch bounding box in pixels?
         draw_width = paint_width - 2 * GAMEPLAY_PADDING_WIDTH
         draw_height = paint_height - 2 * GAMEPLAY_PADDING_HEIGHT
