@@ -159,6 +159,14 @@ class FrameRenderer(QObject):
 
     @profile
     def scaled_x(self, x):
+        # TODO even after precomputing as much as possible, `scaled_x` and
+        # `scaled_y` *still* take long enough to make a dent in profiling
+        # (`scaled_point` makes up ~60% the call time of `draw_rectangle`).
+        # We should probably vectorize this computation by computing coordinate
+        # transforms for all snitches at once instead of one at a time.
+        # We can also get some smaller (but still appreciable) gains by removing
+        # the `self` calls - attribute acccess adds up!
+
         # * snitch cordinates: relative to the civmc map. eg -6750, 2300
         # * snitch bounding box coordinates: relative to the bounding box of the
         #   snitches we've been passed, which is the smallest square which
