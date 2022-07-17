@@ -212,9 +212,14 @@ class FrameRenderer(QObject):
     def paint_snitches(self):
         # snitch fields
         for snitch in self.snitches:
-            self.draw_rectangle(snitch.x - 11, snitch.y - 11,
-                snitch.x + 12, snitch.y + 12, color=SNITCH_FIELD_COLOR,
-                alpha=0.23)
+            # only draw visible snitches
+            # TODO add some tolerance for snitches on the GAMEPLAY_PADDING area,
+            # or base the bounds off the actual screen width/height rather than
+            # {min,max}{x,y}.
+            if (self.min_x <= snitch.x <= self.max_x) and (self.min_y <= snitch.y <= self.max_y):
+                self.draw_rectangle(snitch.x - 11, snitch.y - 11,
+                    snitch.x + 12, snitch.y + 12, color=SNITCH_FIELD_COLOR,
+                    alpha=0.23)
 
         # snitch events
         for snitch in self.snitches:
