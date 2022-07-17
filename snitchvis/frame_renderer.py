@@ -18,8 +18,7 @@ GAMEPLAY_HEIGHT = 450
 # for use with line_profiler/kernprof, so I don't have to keep commenting out
 # @profile lines or keep a line-profiler stash/branch
 # https://github.com/pyutils/line_profiler
-SHOULD_PROFILE = False
-if not SHOULD_PROFILE:
+if "profile" not in globals():
     def profile(f):
         return f
 

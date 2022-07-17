@@ -16,7 +16,7 @@ from snitchvis import frame_renderer
 
 PREVIOUS_ERRSTATE = np.seterr('raise')
 
-if not frame_renderer.SHOULD_PROFILE:
+if "profile" not in globals():
     def profile(f):
         return f
 
