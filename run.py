@@ -1,3 +1,6 @@
+import time
+t_start = time.time()
+
 from pathlib import Path
 from argparse import ArgumentParser
 
@@ -17,9 +20,6 @@ parser.add_argument("-r", "--record", help="record and output to a file "
     action="store_true")
 args = parser.parse_args()
 
-
-# TODO handle overlapping events on the same snitch
-
 event_file = Path(".") / args.input
 snitch_db = Path(".") / args.snitch_db
 event_start_td, events = parse_events(event_file)
@@ -27,6 +27,8 @@ snitches = parse_snitches(snitch_db, events)
 users = create_users(events)
 # whther to make our bounding box large enough to show all of our snitches
 show_all_snitches = args.all_snitches
+
+t_parse = time.time()
 
 if args.record:
     vis = SnitchVisRecord(snitches, events, users, show_all_snitches,
@@ -36,4 +38,15 @@ else:
         speeds=[0.25, 0.5, 1, 2.5, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000],
         show_all_snitches=show_all_snitches)
 
+t_instantiation = time.time()
+
 vis.exec()
+t_render = time.time()
+
+print(f"time (event/snitch parsing) {t_parse - t_start}")
+print(f"time (vis instantiation) {t_instantiation - t_parse}")
+print(f"time (rendering) {t_render - t_instantiation}")
+print(f"time (total): {time.time() - t_start}")
+
+# TODO handle overlapping events on the same snitch
+# TODO try copying the buffer per frame and only redrawing what's changed
