@@ -12,9 +12,13 @@ from PyQt6.QtCore import Qt, QTimer, QRect
 
 from snitchvis.frame_renderer import FrameRenderer
 from snitchvis.interface import Interface
+from snitchvis import frame_renderer
 
 PREVIOUS_ERRSTATE = np.seterr('raise')
 
+if not frame_renderer.SHOULD_PROFILE:
+    def profile(f):
+        return f
 
 @dataclass
 class Event:
@@ -50,6 +54,9 @@ class Snitch:
     notes: str
     # events that occurred at this snitch
     events: list[Event]
+
+    # set by frame_renderer, TODO extract out
+    visible: bool = None
 
     @staticmethod
     def from_row(row):
@@ -338,6 +345,7 @@ class SnitchVisRecord(QApplication):
     def start(self):
         pass
 
+    @profile
     def exec(self):
         renderer = FrameRenderer(None, self.snitches, self.events, self.users,
             self.show_all_snitches, self.event_start_td)

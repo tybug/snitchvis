@@ -15,6 +15,14 @@ GAMEPLAY_PADDING_HEIGHT = 20
 GAMEPLAY_WIDTH = 600
 GAMEPLAY_HEIGHT = 450
 
+# for use with line_profiler/kernprof, so I don't have to keep commenting out
+# @profile lines or keep a line-profiler stash/branch
+# https://github.com/pyutils/line_profiler
+SHOULD_PROFILE = False
+if not SHOULD_PROFILE:
+    def profile(f):
+        return f
+
 # TODO does this even need to be a qobject?
 class FrameRenderer(QObject):
     """
@@ -27,6 +35,7 @@ class FrameRenderer(QObject):
     Originally split to allow drawing to either an image or a desktop renderer
     object.
     """
+    @profile
     def __init__(self, paint_object, snitches, events, users, show_all_snitches,
         event_start_td
     ):
@@ -115,6 +124,20 @@ class FrameRenderer(QObject):
         # that amount to center us.
         self.extra_padding_x = max(self.paint_width - self.paint_height, 0) / 2
         self.extra_padding_y = max(self.paint_height - self.paint_width, 0) / 2
+
+    @profile
+    def update_visible_snitches(self):
+        # TODO add some tolerance for snitches on the GAMEPLAY_PADDING area,
+        # or base the bounds off the actual screen width/height rather than
+        # {min,max}{x,y}.
+        for snitch in self.snitches:
+            # XXX don't split this out to two conditions, we want the short circuiting
+            snitch.visible = (
+                (self.min_x <= snitch.x <= self.max_x) and
+                (self.min_y <= snitch.y <= self.max_y)
+            )
+
+    @profile
     def scaled_x(self, x):
         # * snitch cordinates: relative to the civmc map. eg -6750, 2300
         # * snitch bounding box coordinates: relative to the bounding box of the
@@ -142,6 +165,7 @@ class FrameRenderer(QObject):
         draw_area_coords += self.extra_padding_x
         return draw_area_coords
 
+    @profile
     def scaled_y(self, y):
         snitch_bounding_box_ratio = (y - self.min_y) / (self.max_y - self.min_y)
         draw_area_coords = self.draw_size * snitch_bounding_box_ratio
@@ -150,14 +174,17 @@ class FrameRenderer(QObject):
         return draw_area_coords
 
 
+    @profile
     def scaled_point(self, x, y):
         return QPointF(self.scaled_x(x), self.scaled_y(y))
 
+    @profile
     def render(self):
         self.painter = QPainter(self.paint_object)
         self.painter.setRenderHint(QPainter.RenderHint.TextAntialiasing, True)
 
         self.update_coordinate_systems()
+        self.update_visible_snitches()
 
         # time elapsed
         self.paint_info()
@@ -167,6 +194,8 @@ class FrameRenderer(QObject):
         self.painter.end()
 
 
+
+    @profile
     def paint_info(self):
         # our current y coordinate for drawing info. Modified throughout this
         # function
@@ -221,17 +250,15 @@ class FrameRenderer(QObject):
         self.draw_text(x_offset, y,
             f"{int(self.current_mouse_x)}, {int(self.current_mouse_y)}")
 
+    @profile
     def paint_snitches(self):
         # snitch fields
         for snitch in self.snitches:
-            # only draw visible snitches
-            # TODO add some tolerance for snitches on the GAMEPLAY_PADDING area,
-            # or base the bounds off the actual screen width/height rather than
-            # {min,max}{x,y}.
-            if (self.min_x <= snitch.x <= self.max_x) and (self.min_y <= snitch.y <= self.max_y):
-                self.draw_rectangle(snitch.x - 11, snitch.y - 11,
-                    snitch.x + 12, snitch.y + 12, color=SNITCH_FIELD_COLOR,
-                    alpha=0.23)
+            # only draw visible snitches for performance
+            if not snitch.visible:
+                continue
+            self.draw_rectangle(snitch.x - 11, snitch.y - 11, snitch.x + 12,
+                snitch.y + 12, color=SNITCH_FIELD_COLOR, alpha=0.23)
 
         # snitch events
         for snitch in self.snitches:
@@ -258,9 +285,12 @@ class FrameRenderer(QObject):
         # pixels and won't look good
         if self.max_x - self.min_x < 500:
             for snitch in self.snitches:
-                self.draw_rectangle(snitch.x, snitch.y, snitch.x + 1, snitch.y + 1,
-                    color=SNITCH_BLOCK_COLOR)
+                if not snitch.visible:
+                    continue
+                self.draw_rectangle(snitch.x, snitch.y, snitch.x + 1,
+                    snitch.y + 1, color=SNITCH_BLOCK_COLOR)
 
+    @profile
     def draw_rectangle(self, start_x, start_y, end_x, end_y, *, color, alpha=1,
         scaled=True
     ):
@@ -278,6 +308,7 @@ class FrameRenderer(QObject):
         rect = QRectF(start, end)
         self.painter.drawRect(rect)
 
+    @profile
     def draw_line(self, start_x, start_y, end_x, end_y, alpha, pen, width):
         pen.setWidth(width)
         self.painter.setPen(pen)
@@ -285,6 +316,7 @@ class FrameRenderer(QObject):
         self.painter.drawLine(self.scaled_point(start_x, start_y),
             self.scaled_point(end_x, end_y))
 
+    @profile
     def draw_text(self, x, y, text, alpha=1):
         pen = self.painter.pen()
         self.painter.setPen(TEXT_COLOR)
