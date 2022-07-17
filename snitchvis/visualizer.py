@@ -12,7 +12,6 @@ from PyQt6.QtCore import Qt, QTimer, QRect
 
 from snitchvis.frame_renderer import FrameRenderer
 from snitchvis.interface import Interface
-from snitchvis import frame_renderer
 
 PREVIOUS_ERRSTATE = np.seterr('raise')
 
