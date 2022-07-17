@@ -15,7 +15,7 @@ from snitchvis.interface import Interface
 
 PREVIOUS_ERRSTATE = np.seterr('raise')
 
-if "profile" not in globals():
+if "profile" not in __builtins__:
     def profile(f):
         return f
 
