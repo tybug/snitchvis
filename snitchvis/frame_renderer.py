@@ -204,7 +204,9 @@ class FrameRenderer(QObject):
 
     @profile
     def scaled_point(self, x, y):
-        return QPointF(self.scaled_x(x), self.scaled_y(y))
+        x = self.scaled_x(x)
+        y = self.scaled_y(y)
+        return QPointF(x, y)
 
     @profile
     def render(self):
