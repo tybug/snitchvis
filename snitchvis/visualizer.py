@@ -225,7 +225,7 @@ class Snitchvis(QMainWindow):
 
 class SnitchvisApp(QApplication):
     """
-    ``speeds`` must contain ``start_speed``, ``1``, ``0.75``, and ``1.5``.
+    ``speeds`` must contain ``start_speed``.
     """
     def __init__(self, snitches, events, users, event_start_td, *,
         speeds=[0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 3.0, 5.0, 10.0],
