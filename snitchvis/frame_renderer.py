@@ -1,7 +1,10 @@
 from datetime import timedelta
+import os
 
-from PyQt6.QtGui import QColor, QPainter
+from PyQt6.QtGui import QColor, QPainter, QPixmap
 from PyQt6.QtCore import Qt, QPointF, QRectF, QRect, QObject
+
+from snitchvis.utils import resource_path
 
 # white
 TEXT_COLOR = QColor(200, 200, 200)
@@ -97,6 +100,24 @@ class FrameRenderer(QObject):
         self.extra_padding_x = None
         self.extra_padding_y = None
 
+
+        world_path = resource_path("world.png")
+        os.environ['QT_IMAGEIO_MAXALLOC'] = "1000"
+        self.world_pixmap = QPixmap(world_path)
+
+        # 0,0 is actually 10000,10000 in picture coordinates, so offset to
+        # adjust
+        x = self.min_x + 10000
+        y = self.min_y + 10000
+        # world_pixmap is 2 to 1, so divide all coords by 2 to match
+        # TODO round up or down? might be an off by one error here
+        x = int(x / 2)
+        y = int(y / 2)
+
+        print(x, y, dist_diff)
+        # crop to the area we care about
+        self.world_pixmap = self.world_pixmap.copy(x, y, dist_diff, dist_diff)
+
         self.t = 0
 
     def update_coordinate_systems(self):
@@ -185,6 +206,8 @@ class FrameRenderer(QObject):
         self.update_coordinate_systems()
         self.update_visible_snitches()
 
+        # world map
+        self.paint_world_map()
         # time elapsed
         self.paint_info()
         # snitches
@@ -192,6 +215,15 @@ class FrameRenderer(QObject):
 
         self.painter.end()
 
+    @profile
+    def paint_world_map(self):
+        opacity = self.painter.opacity()
+
+        self.painter.setOpacity(0.13)
+        self.painter.drawPixmap(0, 0, self.paint_width, self.paint_height,
+            self.world_pixmap)
+
+        self.painter.setOpacity(opacity)
 
 
     @profile
