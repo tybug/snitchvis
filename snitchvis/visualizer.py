@@ -348,8 +348,8 @@ class SnitchVisRecord(QApplication):
         # seconds
         video_duration = 10
 
-        actual_duration = renderer.event_end_td - renderer.event_start_td
-        actual_duration = actual_duration.total_seconds()
+        max_t = max(e.t for e in self.events)
+        actual_duration = max_t / 1000
 
         # our video is `actual_duration` seconds long, and we need to compress
         # that into `video_duration` seconds at `framerate` fps.
