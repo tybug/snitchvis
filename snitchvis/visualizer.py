@@ -393,7 +393,7 @@ class SnitchVisRecord(QApplication):
 
         for i, im in enumerate(images):
             print(f"saving image {i} to stdin")
-            im.save(p.stdin, "JPEG")
+            im.save(p.stdin, "JPEG", quality=100)
         p.stdin.close()
 
         print("converting images to video with ffmpeg")
