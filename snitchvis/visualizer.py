@@ -329,8 +329,8 @@ class SnitchvisApp(QApplication):
 
 
 class SnitchVisRecord(QApplication):
-    def __init__(self, snitches, events, users, size, show_all_snitches,
-        event_start_td):
+    def __init__(self, snitches, events, users, size, framerate, duration,
+        show_all_snitches, event_start_td):
         # https://stackoverflow.com/q/13215120
         super().__init__(['-platform', 'minimal'])
 
@@ -338,6 +338,10 @@ class SnitchVisRecord(QApplication):
         self.events = events
         self.users = users
         self.size = size
+        # frames per second
+        self.framerate = framerate
+        # seconds
+        self.video_duration = duration
         self.show_all_snitches = show_all_snitches
         self.event_start_td = event_start_td
 
@@ -359,10 +363,6 @@ class SnitchVisRecord(QApplication):
             self.show_all_snitches, self.event_start_td)
 
         images = []
-        # frames per second
-        framerate = 30
-        # seconds
-        video_duration = 10
 
         max_t = max(e.t for e in self.events)
         actual_duration = max_t / 1000
@@ -372,7 +372,7 @@ class SnitchVisRecord(QApplication):
         # we have `framerate * video_duration` frames to work with, and each
         # frame needs to take `actual_duration / num_frames` seconds
 
-        num_frames = int(video_duration * framerate)
+        num_frames = int(self.video_duration * self.framerate)
         # in ms
         frame_duration = (actual_duration / num_frames) * 1000
 
@@ -397,9 +397,9 @@ class SnitchVisRecord(QApplication):
         # https://stackoverflow.com/a/13298538
         # -y overwrites output file if exists
         # -r specifies framerate (frames per second)
-        p = Popen(["ffmpeg", "-y", "-f", "image2pipe", "-r", str(framerate),
-            "-vcodec", "mjpeg", "-pix_fmt", "yuv420p", "-i", "-",
-            "out_ffmpeg.mp4"],
+        p = Popen(["ffmpeg", "-y", "-f", "image2pipe", "-r",
+            str(self.framerate), "-vcodec", "mjpeg", "-pix_fmt", "yuv420p",
+            "-i", "-", "out_ffmpeg.mp4"],
             stdin=PIPE)
 
         for i, im in enumerate(images):
