@@ -328,7 +328,7 @@ class SnitchvisApp(QApplication):
 
 
 class SnitchVisRecord(QApplication):
-    def __init__(self, snitches, events, users, show_all_snitches,
+    def __init__(self, snitches, events, users, size, show_all_snitches,
         event_start_td):
         # https://stackoverflow.com/q/13215120
         super().__init__(['-platform', 'minimal'])
@@ -336,6 +336,7 @@ class SnitchVisRecord(QApplication):
         self.snitches = snitches
         self.events = events
         self.users = users
+        self.size = size
         self.show_all_snitches = show_all_snitches
         self.event_start_td = event_start_td
 
@@ -369,7 +370,7 @@ class SnitchVisRecord(QApplication):
 
         for i in range(num_frames):
             print(f"rendering image {i} / {num_frames}")
-            image = QImage(1000, 1000, QImage.Format.Format_RGB32)
+            image = QImage(self.size, self.size, QImage.Format.Format_RGB32)
             image.fill(Qt.GlobalColor.black)
 
             renderer.paint_object = image
@@ -387,8 +388,8 @@ class SnitchVisRecord(QApplication):
         # -y overwrites output file if exists
         # -r specifies framerate (frames per second)
         p = Popen(["ffmpeg", "-y", "-f", "image2pipe", "-r", str(framerate),
-            "-vcodec", "mjpeg", "-pix_fmt", "yuv420p", "-i", "-", "-vf",
-            "scale=1000:1000", "out_ffmpeg.mp4"],
+            "-vcodec", "mjpeg", "-pix_fmt", "yuv420p", "-i", "-",
+            "out_ffmpeg.mp4"],
             stdin=PIPE)
 
         for i, im in enumerate(images):

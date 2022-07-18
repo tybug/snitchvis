@@ -18,6 +18,9 @@ parser.add_argument("-s", "--snitch-db", help="snitch database (.sqlite) file "
 parser.add_argument("-r", "--record", help="record and output to a file "
     "instead o showing an interactive QApplication", default=False,
     action="store_true")
+parser.add_argument("-p", "--pixels", help="pixel width of the generated "
+    "images. Only has an effect when -r/--record is passed", default=500,
+    type=int)
 args = parser.parse_args()
 
 event_file = Path(".") / args.input
@@ -27,12 +30,13 @@ snitches = parse_snitches(snitch_db, events)
 users = create_users(events)
 # whther to make our bounding box large enough to show all of our snitches
 show_all_snitches = args.all_snitches
+size = args.pixels
 
 t_parse = time.time()
 
 if args.record:
-    vis = SnitchVisRecord(snitches, events, users, show_all_snitches,
-        event_start_td)
+    vis = SnitchVisRecord(snitches, events, users, size, show_all_snitches,
+    event_start_td)
 else:
     vis = SnitchvisApp(snitches, events, users, event_start_td,
         speeds=[0.25, 0.5, 1, 2.5, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000],
