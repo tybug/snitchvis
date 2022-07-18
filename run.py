@@ -45,11 +45,11 @@ else:
 t_instantiation = time.time()
 
 vis.exec()
-t_render = time.time()
 
 print(f"time (event/snitch parsing) {t_parse - t_start}")
 print(f"time (vis instantiation) {t_instantiation - t_parse}")
-print(f"time (rendering) {t_render - t_instantiation}")
+print(f"time (rendering) {vis.rendering_end - vis.rendering_start}")
+print(f"time (ffmpeg stitching) {vis.ffmpeg_end - vis.ffmpeg_start}")
 print(f"time (total): {time.time() - t_start}")
 
 # TODO handle overlapping events on the same snitch

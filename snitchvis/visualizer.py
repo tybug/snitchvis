@@ -3,6 +3,7 @@ import re
 from datetime import datetime
 import sqlite3
 from subprocess import Popen, PIPE
+import time
 
 import numpy as np
 from PIL.ImageQt import fromqimage
@@ -340,6 +341,12 @@ class SnitchVisRecord(QApplication):
         self.show_all_snitches = show_all_snitches
         self.event_start_td = event_start_td
 
+        # for profling, written to but not read by us
+        self.rendering_start = None
+        self.rendering_end = None
+        self.ffmpeg_start = None
+        self.ffmpeg_end = None
+
         QTimer.singleShot(0, self.start)
 
     def start(self):
@@ -347,6 +354,7 @@ class SnitchVisRecord(QApplication):
 
     @profile
     def exec(self):
+        self.rendering_start = time.time()
         renderer = FrameRenderer(None, self.snitches, self.events, self.users,
             self.show_all_snitches, self.event_start_td)
 
@@ -383,6 +391,8 @@ class SnitchVisRecord(QApplication):
             # pipe instead of im.save.
             im = fromqimage(image)
             images.append(im)
+        self.rendering_end = time.time()
+        self.ffmpeg_start = time.time()
 
         # https://stackoverflow.com/a/13298538
         # -y overwrites output file if exists
@@ -399,5 +409,6 @@ class SnitchVisRecord(QApplication):
 
         print("converting images to video with ffmpeg")
         p.wait()
+        self.ffmpeg_end = time.time()
 
         QApplication.quit()
