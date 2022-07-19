@@ -343,6 +343,8 @@ class SnitchVisRecord(QApplication):
         self.event_start_td = event_start_td
 
         # for profling, written to but not read by us
+        self.instantiation_start = None
+        self.instantiation_end = None
         self.rendering_start = None
         self.rendering_end = None
         self.ffmpeg_start = None
@@ -364,14 +366,16 @@ class SnitchVisRecord(QApplication):
 
     @profile
     def exec(self):
-        self.rendering_start = time.time()
+        self.instantiation_start = time.time()
         renderer = FrameRenderer(None, self.snitches, self.events, self.users,
             self.show_all_snitches, self.event_start_td)
         renderer.event_fade = self.event_fade
         renderer.draw_coordinates = False
+        self.instantiation_end = time.time()
 
         images = []
 
+        self.rendering_start = time.time()
         for i in range(self.num_frames):
             print(f"rendering image {i} / {self.num_frames}")
             image = QImage(self.size, self.size, QImage.Format.Format_RGB32)

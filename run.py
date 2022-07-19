@@ -52,12 +52,10 @@ else:
         speeds=[0.25, 0.5, 1, 2.5, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000],
         show_all_snitches=show_all_snitches)
 
-t_instantiation = time.time()
-
 vis.exec()
 
 print(f"time (event/snitch parsing) {t_parse - t_start}")
-print(f"time (vis instantiation) {t_instantiation - t_parse}")
+print(f"time (vis/framerenderer instantiation) {vis.instantiation_end - vis.instantiation_start}")
 print(f"time (rendering) {vis.rendering_end - vis.rendering_start}")
 print(f"time (ffmpeg stitching) {vis.ffmpeg_end - vis.ffmpeg_start}")
 print(f"time (total): {time.time() - t_start}")
