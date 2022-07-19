@@ -329,8 +329,8 @@ class SnitchvisApp(QApplication):
 
 
 class SnitchVisRecord(QApplication):
-    def __init__(self, snitches, events, users, size, framerate, duration,
-        show_all_snitches, event_start_td):
+    def __init__(self, snitches, events, users, event_start_td, size, framerate, duration,
+        show_all_snitches, event_fade_percentage):
         # https://stackoverflow.com/q/13215120
         super().__init__(['-platform', 'minimal'])
 
@@ -351,6 +351,20 @@ class SnitchVisRecord(QApplication):
         self.ffmpeg_start = None
         self.ffmpeg_end = None
 
+        # in ms
+        actual_duration = max(e.t for e in self.events)
+
+        # our video is `actual_duration` ms long, and we need to compress
+        # that into `video_duration` seconds at `framerate` fps.
+        # we have `framerate * video_duration` frames to work with, and each
+        # frame needs to take `actual_duration / num_frames` seconds
+
+        self.num_frames = int(self.video_duration * self.framerate)
+        # in ms
+        self.frame_duration = actual_duration / self.num_frames
+        # in ms
+        self.event_fade = actual_duration * (event_fade_percentage / 100)
+
         QTimer.singleShot(0, self.start)
 
     def start(self):
@@ -360,29 +374,17 @@ class SnitchVisRecord(QApplication):
     def exec(self):
         self.rendering_start = time.time()
         renderer = FrameRenderer(None, self.snitches, self.events, self.users,
-            self.show_all_snitches, self.event_start_td)
+            self.show_all_snitches, self.event_start_td, self.event_fade)
 
         images = []
 
-        max_t = max(e.t for e in self.events)
-        actual_duration = max_t / 1000
-
-        # our video is `actual_duration` seconds long, and we need to compress
-        # that into `video_duration` seconds at `framerate` fps.
-        # we have `framerate * video_duration` frames to work with, and each
-        # frame needs to take `actual_duration / num_frames` seconds
-
-        num_frames = int(self.video_duration * self.framerate)
-        # in ms
-        frame_duration = (actual_duration / num_frames) * 1000
-
-        for i in range(num_frames):
-            print(f"rendering image {i} / {num_frames}")
+        for i in range(self.num_frames):
+            print(f"rendering image {i} / {self.num_frames}")
             image = QImage(self.size, self.size, QImage.Format.Format_RGB32)
             image.fill(Qt.GlobalColor.black)
 
             renderer.paint_object = image
-            renderer.t = int(i * frame_duration)
+            renderer.t = int(i * self.frame_duration)
             renderer.render()
 
             # TODO this is relatively expensive (5% of function time), we can

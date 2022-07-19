@@ -39,7 +39,7 @@ class FrameRenderer(QObject):
     """
     @profile
     def __init__(self, paint_object, snitches, events, users, show_all_snitches,
-        event_start_td
+        event_start_td, event_fade=5 * 60 * 1000
     ):
         super().__init__()
 
@@ -54,8 +54,7 @@ class FrameRenderer(QObject):
         self.events = events
         self.current_mouse_x = 0
         self.current_mouse_y = 0
-        # 5 minutes in ms
-        self.event_fade = 5 * 60 * 1000
+        self.event_fade = event_fade
 
         # figure out a bounding box for our events.
         # if we want to show all our snitches instead of all our events, bound

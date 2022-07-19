@@ -25,6 +25,8 @@ parser.add_argument("-f", "--fps", help="frames per second of the generated "
     "video", default=30, type=int)
 parser.add_argument("-d", "--duration", help="duration of the generated video, "
     "in seconds", default=10, type=int)
+parser.add_argument("--fade", help="percentage of the video snitch pings "
+    "should be visible for", default=5, type=float)
 args = parser.parse_args()
 
 event_file = Path(".") / args.input
@@ -38,12 +40,13 @@ show_all_snitches = args.all_snitches
 size = args.pixels
 fps = args.fps
 duration = args.duration
+event_fade_percentage = args.fade
 
 t_parse = time.time()
 
 if args.record:
-    vis = SnitchVisRecord(snitches, events, users, size, fps, duration,
-        show_all_snitches, event_start_td)
+    vis = SnitchVisRecord(snitches, events, users, event_start_td, size, fps,
+        duration, show_all_snitches, event_fade_percentage)
 else:
     vis = SnitchvisApp(snitches, events, users, event_start_td,
         speeds=[0.25, 0.5, 1, 2.5, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000],
