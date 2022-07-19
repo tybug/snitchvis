@@ -369,7 +369,9 @@ class SnitchVisRecord(QApplication):
     def exec(self):
         self.rendering_start = time.time()
         renderer = FrameRenderer(None, self.snitches, self.events, self.users,
-            self.show_all_snitches, self.event_start_td, self.event_fade)
+            self.show_all_snitches, self.event_start_td)
+        renderer.event_fade = self.event_fade
+        renderer.draw_coordinates = False
 
         images = []
 
