@@ -80,14 +80,13 @@ class FrameRenderer(QObject):
             self.max_y += (dist_diff / 2)
             self.min_y -= (dist_diff / 2)
 
-        self.paint_object = paint_object
-
         self.playback_start = 0
         self.playback_end = max(event.t for event in events)
-
-        self.painter = None
         self.paused = False
         self.play_direction = 1
+
+        self.paint_object = paint_object
+        self.painter = None
 
         # coordinate system calculations. see `update_coordinate_systems` for
         # documentation
