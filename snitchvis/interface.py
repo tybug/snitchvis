@@ -1,8 +1,5 @@
-from dataclasses import dataclass
-
 from PyQt6.QtWidgets import QGridLayout, QWidget, QSplitter, QFrame
-from PyQt6.QtCore import Qt, QRect
-from PyQt6.QtGui import QColor
+from PyQt6.QtCore import Qt
 
 from snitchvis.renderer import Renderer
 from snitchvis.controls import VisualizerControls
@@ -31,7 +28,7 @@ class Interface(QWidget):
         self.controls.time_slider.sliderMoved.connect(self.renderer.seek_to)
         self.controls.time_slider.setRange(self.renderer.playback_start, self.renderer.playback_end)
 
-        self.controls.event_fade.connect(self.event_fade_changed)
+        self.controls.event_fade_changed.connect(self.event_fade_changed)
 
         self.splitter = QSplitter()
         # splitter lays widgets horizontally by default, so combine renderer and
