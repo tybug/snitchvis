@@ -31,7 +31,7 @@ class Interface(QWidget):
         self.controls.time_slider.sliderMoved.connect(self.renderer.seek_to)
         self.controls.time_slider.setRange(self.renderer.playback_start, self.renderer.playback_end)
 
-        self.controls.snitch_event_changed.connect(self.snitch_event_changed)
+        self.controls.event_fade.connect(self.event_fade_changed)
 
         self.splitter = QSplitter()
         # splitter lays widgets horizontally by default, so combine renderer and
@@ -102,9 +102,9 @@ class Interface(QWidget):
         self.pause()
         self.renderer.seek_to(time)
 
-    def snitch_event_changed(self, new_val):
+    def event_fade_changed(self, new_val):
         # convert minutes to ms
-        self.renderer.snitch_event_limit = new_val * 60 * 1000
+        self.renderer.event_fade = new_val * 60 * 1000
         self.renderer.update()
 
 class Combined(QFrame):

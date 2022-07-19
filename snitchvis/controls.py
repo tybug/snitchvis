@@ -7,7 +7,7 @@ from snitchvis.widgets import JumpSlider, PushButton, SliderSetting
 
 class VisualizerControls(QFrame):
 
-    snitch_event_changed = pyqtSignal(int)
+    event_fade_changed = pyqtSignal(int)
 
     def __init__(self, speed, events, users):
         super().__init__()
@@ -52,8 +52,8 @@ class VisualizerControls(QFrame):
         self.settings_button.clicked.connect(self.settings_button_clicked)
 
         self.settings_popup = SettingsPopup(self)
-        self.settings_popup.snitch_event_limit.value_changed.connect(
-            self.snitch_event_changed
+        self.settings_popup.event_fade.value_changed.connect(
+            self.event_fade_changed
         )
 
         self.speed_up_button = PushButton()
@@ -109,10 +109,10 @@ class SettingsPopup(QFrame):
         self.setMaximumWidth(400)
         self.setMaximumHeight(100)
 
-        self.snitch_event_limit = SliderSetting("Fade (mins)", 5, 1, 120)
+        self.event_fade = SliderSetting("Fade (mins)", 5, 1, 120)
 
         layout = QVBoxLayout()
-        layout.addWidget(self.snitch_event_limit)
+        layout.addWidget(self.event_fade)
         self.setLayout(layout)
 
 class TimeSlider(JumpSlider):

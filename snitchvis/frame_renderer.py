@@ -55,7 +55,7 @@ class FrameRenderer(QObject):
         self.current_mouse_x = 0
         self.current_mouse_y = 0
         # 5 minutes in ms
-        self.snitch_event_limit = 5 * 60 * 1000
+        self.event_fade = 5 * 60 * 1000
 
         # figure out a bounding box for our events.
         # if we want to show all our snitches instead of all our events, bound
@@ -307,14 +307,14 @@ class FrameRenderer(QObject):
             alpha = None
 
             for event in snitch.events:
-                if not self.t - self.snitch_event_limit <= event.t <= self.t:
+                if not self.t - self.event_fade <= event.t <= self.t:
                     continue
                 user = self.users_by_username[event.username]
                 # don't draw events from disabled users
                 if not user.enabled:
                     continue
                 color = user.color
-                alpha = (1 - (self.t - event.t) / self.snitch_event_limit)
+                alpha = (1 - (self.t - event.t) / self.event_fade)
 
             if not (color and alpha):
                 continue
