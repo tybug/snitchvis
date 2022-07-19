@@ -118,7 +118,6 @@ class FrameRenderer(QObject):
         x = int(x / 2)
         y = int(y / 2)
 
-        print(x, y, dist_diff)
         # crop to the area we care about
         self.world_pixmap = self.world_pixmap.copy(x, y, dist_diff, dist_diff)
 
