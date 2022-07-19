@@ -89,6 +89,7 @@ class FrameRenderer(QObject):
 
         self.paint_object = paint_object
         self.painter = None
+        self.visible_snitches = None
 
         # coordinate system calculations. see `update_coordinate_systems` for
         # documentation
@@ -150,12 +151,22 @@ class FrameRenderer(QObject):
         # TODO add some tolerance for snitches on the GAMEPLAY_PADDING area,
         # or base the bounds off the actual screen width/height rather than
         # {min,max}{x,y}.
+        # TODO vectorize this with numpy
+        self.visible_snitches = []
+
+        # avoid dot access for speed. probably a premature optimization, but
+        # doesn't hurt.
+        append = self.visible_snitches.append
+        min_x = self.min_x
+        max_x = self.max_x
+        min_y = self.min_y
+        max_y = self.max_y
+
         for snitch in self.snitches:
-            # XXX don't split this out to two conditions, we want the short circuiting
-            snitch.visible = (
-                (self.min_x <= snitch.x <= self.max_x) and
-                (self.min_y <= snitch.y <= self.max_y)
-            )
+            # XXX don't split this out to two conditions, we want the short
+            # circuiting
+            if (min_x <= snitch.x <= max_x) and (min_y <= snitch.y <= max_y):
+                append(snitch)
 
     @profile
     def scaled_x(self, x):
@@ -295,15 +306,12 @@ class FrameRenderer(QObject):
     @profile
     def paint_snitches(self):
         # snitch fields
-        for snitch in self.snitches:
-            # only draw visible snitches for performance
-            if not snitch.visible:
-                continue
+        for snitch in self.visible_snitches:
             self.draw_rectangle(snitch.x - 11, snitch.y - 11, snitch.x + 12,
                 snitch.y + 12, color=SNITCH_FIELD_COLOR, alpha=0.23)
 
         # snitch events
-        for snitch in self.snitches:
+        for snitch in self.visible_snitches:
             color = None
             alpha = None
 
@@ -326,9 +334,7 @@ class FrameRenderer(QObject):
         # sufficiently large, otherwise these will just appear as single white
         # pixels and won't look good
         if self.max_x - self.min_x < 500:
-            for snitch in self.snitches:
-                if not snitch.visible:
-                    continue
+            for snitch in self.visible_snitches:
                 self.draw_rectangle(snitch.x, snitch.y, snitch.x + 1,
                     snitch.y + 1, color=SNITCH_BLOCK_COLOR)
 

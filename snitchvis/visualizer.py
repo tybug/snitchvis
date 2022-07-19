@@ -55,9 +55,6 @@ class Snitch:
     # events that occurred at this snitch
     events: list[Event]
 
-    # set by frame_renderer, TODO extract out
-    visible: bool = None
-
     @staticmethod
     def from_row(row):
         # swap z and y for my sanity
