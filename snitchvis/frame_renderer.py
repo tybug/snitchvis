@@ -101,6 +101,9 @@ class FrameRenderer(QObject):
         self.extra_padding_x = None
         self.extra_padding_y = None
 
+        self.previous_paint_device_width = None
+        self.previous_paint_device_height = None
+
 
         world_path = resource_path("world.png")
         os.environ['QT_IMAGEIO_MAXALLOC'] = "1000"
@@ -128,9 +131,8 @@ class FrameRenderer(QObject):
         # perform a recalculation when the screen size changes, or at every
         # frame at absolute worst.
 
-        paint_device = self.painter.device()
-        self.paint_width = paint_device.width()
-        self.paint_height = paint_device.height()
+        self.paint_width = self.paint_object.width()
+        self.paint_height = self.paint_object.height()
 
         # Figure out the width of the draw area so we can scale our snitch
         # coordinates accordingly.
@@ -224,8 +226,15 @@ class FrameRenderer(QObject):
         self.painter = QPainter(self.paint_object)
         self.painter.setRenderHint(QPainter.RenderHint.TextAntialiasing, True)
 
-        self.update_coordinate_systems()
-        self.update_visible_snitches()
+        # we only need to update some things (coordinate systems, snitch
+        # visibility) whenever the size of the paint device changes.
+        prev_pd_w = self.previous_paint_device_width
+        prev_pd_h = self.previous_paint_device_height
+        current_pd_w = self.paint_object.width()
+        current_pd_h = self.paint_object.height()
+        if prev_pd_w != current_pd_w or prev_pd_h != current_pd_h:
+            self.update_coordinate_systems()
+            self.update_visible_snitches()
 
         # world map
         self.paint_world_map()
@@ -235,6 +244,9 @@ class FrameRenderer(QObject):
         self.paint_snitches()
 
         self.painter.end()
+
+        self.previous_paint_device_width = current_pd_w
+        self.previous_paint_device_height = current_pd_h
 
     @profile
     def paint_world_map(self):
