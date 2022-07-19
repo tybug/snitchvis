@@ -9,7 +9,7 @@ import numpy as np
 from PIL.ImageQt import fromqimage
 from PyQt6.QtGui import QPalette, QColor, QShortcut, QImage
 from PyQt6.QtWidgets import QMainWindow, QApplication
-from PyQt6.QtCore import Qt, QTimer, QRect
+from PyQt6.QtCore import Qt, QRect
 
 from snitchvis.frame_renderer import FrameRenderer
 from snitchvis.interface import Interface
@@ -364,11 +364,6 @@ class SnitchVisRecord(QApplication):
         self.frame_duration = actual_duration / self.num_frames
         # in ms
         self.event_fade = actual_duration * (event_fade_percentage / 100)
-
-        QTimer.singleShot(0, self.start)
-
-    def start(self):
-        pass
 
     @profile
     def exec(self):
