@@ -385,6 +385,9 @@ class SnitchVisRecord(QApplication):
             renderer.t = int(i * self.frame_duration)
             renderer.render()
 
+            if i == 0:
+                renderer.base_frame = image
+
             # TODO this is relatively expensive (5% of function time), we can
             # probably do better by only saving to a buffer and not creating a
             # full PIL QImage object. Then stream that buffer to the ffmpeg

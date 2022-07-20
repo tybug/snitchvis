@@ -89,6 +89,12 @@ class FrameRenderer(QObject):
 
         self.paint_object = paint_object
         self.painter = None
+        # a base frame to draw on top of. Allows us to "bake" expensive drawing
+        # operations into a single base frame and draw that frame (which is a
+        # pixmap) every time instead of lots of individual draw operations.
+        # Anything drawn to this frame should remain static over the entire
+        # duration of the visualization.
+        self.base_frame = None
         self.visible_snitches = None
 
         # coordinate system calculations. see `update_coordinate_systems` for
@@ -235,6 +241,9 @@ class FrameRenderer(QObject):
             self.update_coordinate_systems()
             self.update_visible_snitches()
 
+        if self.base_frame:
+            self.painter.drawImage(0, 0, self.base_frame)
+
         # world map
         self.paint_world_map()
         # time elapsed
@@ -249,6 +258,8 @@ class FrameRenderer(QObject):
 
     @profile
     def paint_world_map(self):
+        if self.base_frame:
+            return
         opacity = self.painter.opacity()
 
         self.painter.setOpacity(0.13)
@@ -260,6 +271,8 @@ class FrameRenderer(QObject):
 
     @profile
     def paint_info(self):
+        if not self.base_frame:
+            return
         # our current y coordinate for drawing info. Modified throughout this
         # function
         y = 15
@@ -317,9 +330,10 @@ class FrameRenderer(QObject):
     @profile
     def paint_snitches(self):
         # snitch fields
-        for snitch in self.visible_snitches:
-            self.draw_rectangle(snitch.x - 11, snitch.y - 11, snitch.x + 12,
-                snitch.y + 12, color=SNITCH_FIELD_COLOR, alpha=0.23)
+        if not self.base_frame:
+            for snitch in self.visible_snitches:
+                self.draw_rectangle(snitch.x - 11, snitch.y - 11, snitch.x + 12,
+                    snitch.y + 12, color=SNITCH_FIELD_COLOR, alpha=0.23)
 
         # snitch events
         for snitch in self.visible_snitches:
