@@ -39,7 +39,8 @@ users = create_users(events)
 show_all_snitches = args.all_snitches
 size = args.pixels
 fps = args.fps
-duration = args.duration
+# convert seconds to ms
+duration = args.duration * 1000
 event_fade_percentage = args.fade
 
 t_parse = time.time()
@@ -64,6 +65,5 @@ if args.record:
 
 # TODO handle overlapping events on the same snitch
 # TODO try copying the buffer per frame and only redrawing what's changed
-# TODO end events get cut off due to ending visualization too soon (step size is
-# not perfect). give some padding time after the last event. maybe also for
-# first event? likely less of a concern...
+# TODO pad the first event like we did the last event? less of a concern but
+# will probably make it look nicer due to seeing the fade in

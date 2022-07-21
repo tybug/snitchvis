@@ -336,8 +336,6 @@ class SnitchVisRecord(QApplication):
         self.size = size
         # frames per second
         self.framerate = framerate
-        # seconds
-        self.video_duration = duration
         self.show_all_snitches = show_all_snitches
         self.event_start_td = event_start_td
 
@@ -351,19 +349,33 @@ class SnitchVisRecord(QApplication):
         self.ffmpeg_start = None
         self.ffmpeg_end = None
 
-        # in ms
-        actual_duration = max(e.t for e in self.events)
 
-        # our video is `actual_duration` ms long, and we need to compress
-        # that into `video_duration` seconds at `framerate` fps.
-        # we have `framerate * video_duration` frames to work with, and each
-        # frame needs to take `actual_duration / num_frames` seconds
+        # our events cover `duration` ms (in game time), and we need to
+        # compress that into `duration_rt` ms (in real time) at
+        # `framerate` fps. we have `framerate * duration_rt / 1000` frames
+        # to work with, and each frame needs to take
+        # `duration / num_frames` seconds.
 
-        self.num_frames = int(self.video_duration * self.framerate)
-        # in ms
-        self.frame_duration = actual_duration / self.num_frames
-        # in ms
-        self.event_fade = actual_duration * (event_fade_percentage / 100)
+        # in ms (relative to real time)
+        duration_rt = duration
+        # in ms (relative to game time)
+        duration = max(e.t for e in self.events)
+
+        self.num_frames = int((duration_rt / 1000) * self.framerate)
+        # in ms (relative to game time)
+        self.frame_duration = duration / self.num_frames
+        # in ms (relative to real time)
+        self.frame_duration_rt = duration_rt / self.num_frames
+        # in ms (relative to game time)
+        self.event_fade = duration * (event_fade_percentage / 100)
+
+        # we want to add a little bit of padding farmes beyond when the last
+        # frame occurs, so that the last event doesn't appear to get cut off.
+        # This also allows the fade duration on the event to finish playing out.
+        # We'll add 10% of the video duration or 1 second, whichever is shorter.
+        # in ms (relative to real time)
+        padding_t = min(0.1 * duration_rt, 1000)
+        self.num_frames += int(padding_t / self.frame_duration_rt)
 
     @profile
     def exec(self):

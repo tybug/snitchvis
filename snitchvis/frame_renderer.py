@@ -77,7 +77,7 @@ class FrameRenderer:
         self.events = events
         self.current_mouse_x = 0
         self.current_mouse_y = 0
-        # 5 minutes, in ms
+        # 5 minutes, in ms (relative to game time)
         self.event_fade = 5 * 60 * 1000
         self.draw_coordinates = True
 
