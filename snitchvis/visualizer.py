@@ -377,6 +377,13 @@ class SnitchVisRecord(QApplication):
         images = []
 
         self.rendering_start = time.time()
+
+        image = QImage(self.size, self.size, QImage.Format.Format_RGB32)
+        image.fill(Qt.GlobalColor.black)
+        renderer.paint_object = image
+        renderer.render(drawing_base_frame=True)
+        renderer.base_frame = image
+
         for i in range(self.num_frames):
             print(f"rendering image {i} / {self.num_frames}")
             image = QImage(self.size, self.size, QImage.Format.Format_RGB32)
@@ -385,11 +392,8 @@ class SnitchVisRecord(QApplication):
             renderer.paint_object = image
             renderer.t = int(i * self.frame_duration)
             renderer.render()
-
-            if i == 0:
-                renderer.base_frame = image
-
             images.append(image)
+
         self.rendering_end = time.time()
 
         buffer = QBuffer()

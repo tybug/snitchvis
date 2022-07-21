@@ -132,32 +132,12 @@ class Renderer(QFrame):
         x = event.pos().x()
         y = event.pos().y()
         # convert local screen coordinates (where 0,0 is the upper left corner)
-        # to in-game coordinates.
+        # to world (in-game) coordinates.
 
-        paint_width = self.frame_renderer.paint_width
-        paint_height = self.frame_renderer.paint_height
-        # how wide is the snitch bounding box in pixels?
-        draw_width = paint_width - 2 * GAMEPLAY_PADDING_WIDTH
-        draw_height = paint_height - 2 * GAMEPLAY_PADDING_HEIGHT
-        draw_size = min(draw_width, draw_height)
-
-        x -= GAMEPLAY_PADDING_WIDTH + max(paint_width - paint_height, 0) / 2
-        y -= GAMEPLAY_PADDING_HEIGHT + max(paint_height - paint_width, 0) / 2
-
-        # how far in to the snitch bounding box are we?
-        ratio_x = x / draw_size
-        ratio_y = y / draw_size
-
-        max_x = self.frame_renderer.max_x
-        min_x = self.frame_renderer.min_x
-        max_y = self.frame_renderer.max_y
-        min_y = self.frame_renderer.min_y
-        # bounding box should always be a square
-        assert max_x - min_x == max_y - min_y
-        mouse_x = min_x + ratio_x * (max_x - min_x)
-        mouse_y = min_y + ratio_y * (max_y - min_y)
-        self.frame_renderer.current_mouse_x = mouse_x
-        self.frame_renderer.current_mouse_y = mouse_y
+        x = self.frame_renderer.world_x(x)
+        y = self.frame_renderer.world_y(y)
+        self.frame_renderer.current_mouse_x = x
+        self.frame_renderer.current_mouse_y = y
 
         cursor = QCursor(Qt.CursorShape.ArrowCursor)
         for user in self.users:

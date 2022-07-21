@@ -1,8 +1,9 @@
 from datetime import timedelta
 import os
+from enum import Enum, auto
 
 from PyQt6.QtGui import QColor, QPainter, QPixmap
-from PyQt6.QtCore import Qt, QPointF, QRectF, QRect, QObject
+from PyQt6.QtCore import Qt, QPointF, QRectF, QRect
 
 from snitchvis.utils import resource_path
 
@@ -18,6 +19,11 @@ GAMEPLAY_PADDING_HEIGHT = 20
 GAMEPLAY_WIDTH = 600
 GAMEPLAY_HEIGHT = 450
 
+class Draw(Enum):
+    ALL = auto()
+    ONLY_BASE_FRAME = auto()
+    ALL_EXCEPT_BASE_FRAME = auto()
+
 # for use with line_profiler/kernprof, so I don't have to keep commenting out
 # @profile lines or keep a line-profiler stash/branch
 # https://github.com/pyutils/line_profiler
@@ -25,8 +31,25 @@ if "profile" not in __builtins__:
     def profile(f):
         return f
 
-# TODO does this even need to be a qobject?
-class FrameRenderer(QObject):
+def draw(draw_mode):
+    def decorator(f):
+        def wrapper(self, *args, **kwargs):
+            nonlocal draw_mode
+            # if we're not using a base frame at all, then just draw everything
+            # every frame (this is what the non-recording visualizer does)
+            if self.base_frame is None and not self.drawing_base_frame:
+                draw_mode = Draw.ALL
+
+            if draw_mode == Draw.ONLY_BASE_FRAME and not self.drawing_base_frame:
+                return
+            if draw_mode == Draw.ALL_EXCEPT_BASE_FRAME and self.drawing_base_frame:
+                return
+            f(self, *args, **kwargs)
+
+        return wrapper
+    return decorator
+
+class FrameRenderer:
     """
     Core of the drawing / painting occurs here. Responsible for drawing a single
     frame at a particular time to a generic paint object.
@@ -56,7 +79,7 @@ class FrameRenderer(QObject):
         self.current_mouse_y = 0
         # 5 minutes, in ms
         self.event_fade = 5 * 60 * 1000
-        self.draw_coordinates = False
+        self.draw_coordinates = True
 
         # figure out a bounding box for our events.
         # if we want to show all our snitches instead of all our events, bound
@@ -95,6 +118,7 @@ class FrameRenderer(QObject):
         # Anything drawn to this frame should remain static over the entire
         # duration of the visualization.
         self.base_frame = None
+        self.drawing_base_frame = None
         self.visible_snitches = None
 
         # coordinate system calculations. see `update_coordinate_systems` for
@@ -114,18 +138,6 @@ class FrameRenderer(QObject):
         world_path = resource_path("world.png")
         os.environ['QT_IMAGEIO_MAXALLOC'] = "1000"
         self.world_pixmap = QPixmap(world_path)
-
-        # 0,0 is actually 10000,10000 in picture coordinates, so offset to
-        # adjust
-        x = self.min_x + 10000
-        y = self.min_y + 10000
-        # world_pixmap is 2 to 1, so divide all coords by 2 to match
-        # TODO round up or down? might be an off by one error here
-        x = int(x / 2)
-        y = int(y / 2)
-
-        # crop to the area we care about
-        self.world_pixmap = self.world_pixmap.copy(x, y, dist_diff, dist_diff)
 
         self.t = 0
 
@@ -153,6 +165,24 @@ class FrameRenderer(QObject):
         self.extra_padding_x = max(self.paint_width - self.paint_height, 0) / 2
         self.extra_padding_y = max(self.paint_height - self.paint_width, 0) / 2
 
+    def world_x(self, x):
+        """
+        Converts a screen x coordinate (`x`) to a world (in-game) coordinate.
+        """
+        x -= GAMEPLAY_PADDING_WIDTH + self.extra_padding_x
+        # how far in to the snitch bounding box are we?
+        ratio_x = x / self.draw_size
+        return self.min_x + ratio_x * (self.max_x - self.min_x)
+
+    def world_y(self, y):
+        """
+        Converts a screen y coordinate (`y`) to a world (in-game) coordinate.
+        """
+        y -= GAMEPLAY_PADDING_HEIGHT + self.extra_padding_y
+        # how far in to the snitch bounding box are we?
+        ratio_y = y / self.draw_size
+        return self.min_y + ratio_y * (self.max_y - self.min_y)
+
     @profile
     def update_visible_snitches(self):
         # TODO add some tolerance for snitches on the GAMEPLAY_PADDING area,
@@ -176,16 +206,20 @@ class FrameRenderer(QObject):
                 append(snitch)
 
     @profile
-    def scaled_x(self, x):
-        # TODO even after precomputing as much as possible, `scaled_x` and
-        # `scaled_y` *still* take long enough to make a dent in profiling
-        # (`scaled_point` makes up ~60% the call time of `draw_rectangle`).
+    def screen_x(self, x):
+        """
+        Converts a world x coordinate (`x`) to a screen x coordinate (where 0
+        is the top left corner in screen coordinate space).
+        """
+        # TODO even after precomputing as much as possible, `screen_x` and
+        # `screen_y` *still* take long enough to make a dent in profiling
+        # (`screen_point` makes up ~60% the call time of `draw_rectangle`).
         # We should probably vectorize this computation by computing coordinate
         # transforms for all snitches at once instead of one at a time.
         # We can also get some smaller (but still appreciable) gains by removing
         # the `self` calls - attribute acccess adds up!
 
-        # * snitch cordinates: relative to the civmc map. eg -6750, 2300
+        # * world coordinates: relative to the civmc map. eg -6750, 2300
         # * snitch bounding box coordinates: relative to the bounding box of the
         #   snitches we've been passed, which is the smallest square which
         #   contains all the passed snitches.
@@ -196,7 +230,7 @@ class FrameRenderer(QObject):
         #   GAMEPLAY_PADDING_HEIGHT and GAMEPLAY_PADDING_WIDTH. Will always be
         #   a square.
 
-        # right now we have the snitch coordiantes. We want view coordinates.
+        # right now we have the world coordinates. We want view coordinates.
         # First, we'll convert to draw coordinates, then pad to get view
         # coordinates.
 
@@ -212,22 +246,26 @@ class FrameRenderer(QObject):
         return draw_area_coords
 
     @profile
-    def scaled_y(self, y):
+    def screen_y(self, y):
+        """
+        Converts a world y coordinate (`y`) to a screen y coordinate (where 0
+        is the top left corner in screen coordinate space).
+        """
         snitch_bounding_box_ratio = (y - self.min_y) / (self.max_y - self.min_y)
         draw_area_coords = self.draw_size * snitch_bounding_box_ratio
         draw_area_coords += GAMEPLAY_PADDING_HEIGHT
         draw_area_coords += self.extra_padding_y
         return draw_area_coords
 
-
     @profile
-    def scaled_point(self, x, y):
-        x = self.scaled_x(x)
-        y = self.scaled_y(y)
+    def screen_point(self, x, y):
+        x = self.screen_x(x)
+        y = self.screen_y(y)
         return QPointF(x, y)
 
     @profile
-    def render(self):
+    def render(self, drawing_base_frame=False):
+        self.drawing_base_frame = drawing_base_frame
         self.painter = QPainter(self.paint_object)
         self.painter.setRenderHint(QPainter.RenderHint.TextAntialiasing, True)
 
@@ -245,11 +283,13 @@ class FrameRenderer(QObject):
             self.painter.drawImage(0, 0, self.base_frame)
 
         # world map
-        self.paint_world_map()
+        self.draw_world_map()
         # time elapsed
-        self.paint_info()
+        self.draw_info()
         # snitches
-        self.paint_snitches()
+        self.draw_snitch_fields()
+        self.draw_snitch_events()
+        self.draw_snitch_blocks()
 
         self.painter.end()
 
@@ -257,22 +297,39 @@ class FrameRenderer(QObject):
         self.previous_paint_device_height = current_pd_h
 
     @profile
-    def paint_world_map(self):
-        if self.base_frame:
-            return
-        opacity = self.painter.opacity()
+    @draw(Draw.ONLY_BASE_FRAME)
+    def draw_world_map(self):
+        world_min_x = self.world_x(0)
+        world_min_y = self.world_y(0)
+        world_max_x = self.world_x(self.paint_width)
+        world_max_y = self.world_y(self.paint_height)
 
+        # 0,0 is actually 10000,10000 in picture coordinates, so offset to
+        # adjust.
+        # world pixmap is also 2:1, so divide all coords by 2 to match.
+        # TODO round up or down? might be an off by one error here
+        world_min_x = int((world_min_x + 10000) / 2)
+        world_min_y = int((world_min_y + 10000) / 2)
+        world_max_x = int((world_max_x + 10000) / 2)
+        world_max_y = int((world_max_y + 10000) / 2)
+
+        # TODO what happens when world coords are negative? `copy` will silently
+        # truncate/cap to 0, and we'll get a stretched image... ideally we'd
+        # pad with black, but calculationss might be complicated.
+
+        # # crop to the area we care about
+        world_pixmap = self.world_pixmap.copy(world_min_x, world_min_y,
+            world_max_x - world_min_x, world_max_y - world_min_y)
+
+        opacity = self.painter.opacity()
         self.painter.setOpacity(0.13)
         self.painter.drawPixmap(0, 0, self.paint_width, self.paint_height,
-            self.world_pixmap)
-
+            world_pixmap)
         self.painter.setOpacity(opacity)
 
-
     @profile
-    def paint_info(self):
-        if not self.base_frame:
-            return
+    @draw(Draw.ALL_EXCEPT_BASE_FRAME)
+    def draw_info(self):
         # our current y coordinate for drawing info. Modified throughout this
         # function
         y = 15
@@ -303,7 +360,7 @@ class FrameRenderer(QObject):
             start_x = 5
             start_y = y - 9
             self.draw_rectangle(start_x, start_y, start_x + 10, start_y + 10,
-                color=user.color, alpha=alpha, scaled=False)
+                color=user.color, alpha=alpha, coords="screen")
 
             text = user.username
             self.draw_text(x_offset + 14, y, text, alpha=alpha)
@@ -328,13 +385,15 @@ class FrameRenderer(QObject):
                 f"{int(self.current_mouse_x)}, {int(self.current_mouse_y)}")
 
     @profile
-    def paint_snitches(self):
-        # snitch fields
-        if not self.base_frame:
-            for snitch in self.visible_snitches:
-                self.draw_rectangle(snitch.x - 11, snitch.y - 11, snitch.x + 12,
-                    snitch.y + 12, color=SNITCH_FIELD_COLOR, alpha=0.23)
+    @draw(Draw.ONLY_BASE_FRAME)
+    def draw_snitch_fields(self):
+        for snitch in self.visible_snitches:
+            self.draw_rectangle(snitch.x - 11, snitch.y - 11, snitch.x + 12,
+                snitch.y + 12, color=SNITCH_FIELD_COLOR, alpha=0.23)
 
+    @profile
+    @draw(Draw.ALL_EXCEPT_BASE_FRAME)
+    def draw_snitch_events(self):
         # snitch events
         for snitch in self.visible_snitches:
             color = None
@@ -352,9 +411,13 @@ class FrameRenderer(QObject):
 
             if not (color and alpha):
                 continue
+
             self.draw_rectangle(snitch.x - 11, snitch.y - 11, snitch.x + 12,
                 snitch.y + 12, color=color, alpha=alpha)
 
+    @profile
+    @draw(Draw.ONLY_BASE_FRAME)
+    def draw_snitch_blocks(self):
         # actual snitch blocks. only draw if our snitch bounding box is
         # sufficiently large, otherwise these will just appear as single white
         # pixels and won't look good
@@ -365,16 +428,19 @@ class FrameRenderer(QObject):
 
     @profile
     def draw_rectangle(self, start_x, start_y, end_x, end_y, *, color, alpha=1,
-        scaled=True
+        coords="world"
     ):
         color = QColor(color.red(), color.green(), color.blue())
         self.painter.setPen(Qt.PenStyle.NoPen)
         self.painter.setOpacity(alpha)
         self.painter.setBrush(color)
 
-        if scaled:
-            start = self.scaled_point(start_x, start_y)
-            end = self.scaled_point(end_x, end_y)
+        # `coords` is either "screen" or "world". If screen, passed coords are
+        # screen coords and don't need to be converted. Otherwise, passed coords
+        # are world coords and need to first be converted to screen coords.
+        if coords == "world":
+            start = self.screen_point(start_x, start_y)
+            end = self.screen_point(end_x, end_y)
         else:
             start = QPointF(start_x, start_y)
             end = QPointF(end_x, end_y)
@@ -386,8 +452,8 @@ class FrameRenderer(QObject):
         pen.setWidth(width)
         self.painter.setPen(pen)
         self.painter.setOpacity(alpha)
-        self.painter.drawLine(self.scaled_point(start_x, start_y),
-            self.scaled_point(end_x, end_y))
+        self.painter.drawLine(self.screen_point(start_x, start_y),
+            self.screen_point(end_x, end_y))
 
     @profile
     def draw_text(self, x, y, text, alpha=1):
