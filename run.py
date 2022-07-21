@@ -64,3 +64,6 @@ if args.record:
 
 # TODO handle overlapping events on the same snitch
 # TODO try copying the buffer per frame and only redrawing what's changed
+# TODO end events get cut off due to ending visualization too soon (step size is
+# not perfect). give some padding time after the last event. maybe also for
+# first event? likely less of a concern...
