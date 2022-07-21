@@ -5,7 +5,7 @@
 .spyproject
 .vscode/
 .env
-circlevis.egg-info/
+snitchvis.egg-info/
 input.txt
 input2.txt
 snitches.sqlite
