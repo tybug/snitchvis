@@ -58,7 +58,8 @@ if args.record:
     print(f"time (event/snitch parsing) {t_parse - t_start}")
     print(f"time (vis/framerenderer instantiation) {vis.instantiation_end - vis.instantiation_start}")
     print(f"time (rendering) {vis.rendering_end - vis.rendering_start}")
-    print(f"time (ffmpeg stitching) {vis.ffmpeg_end - vis.ffmpeg_start}")
+    print(f"time (saving images) {vis.saving_images_end - vis.saving_images_start}")
+    print(f"time (ffmpeg) {vis.ffmpeg_end - vis.ffmpeg_start}")
     print(f"time (total): {time.time() - t_start}")
 
 # TODO handle overlapping events on the same snitch

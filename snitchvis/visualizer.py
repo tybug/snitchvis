@@ -6,10 +6,9 @@ from subprocess import Popen, PIPE
 import time
 
 import numpy as np
-from PIL.ImageQt import fromqimage
 from PyQt6.QtGui import QPalette, QColor, QShortcut, QImage
 from PyQt6.QtWidgets import QMainWindow, QApplication
-from PyQt6.QtCore import Qt, QRect
+from PyQt6.QtCore import Qt, QRect, QBuffer
 
 from snitchvis.frame_renderer import FrameRenderer
 from snitchvis.interface import Interface
@@ -347,6 +346,8 @@ class SnitchVisRecord(QApplication):
         self.instantiation_end = None
         self.rendering_start = None
         self.rendering_end = None
+        self.saving_images_start = None
+        self.saving_images_end = None
         self.ffmpeg_start = None
         self.ffmpeg_end = None
 
@@ -388,26 +389,42 @@ class SnitchVisRecord(QApplication):
             if i == 0:
                 renderer.base_frame = image
 
-            # TODO this is relatively expensive (5% of function time), we can
-            # probably do better by only saving to a buffer and not creating a
-            # full PIL QImage object. Then stream that buffer to the ffmpeg
-            # pipe instead of im.save.
-            im = fromqimage(image)
-            images.append(im)
+            images.append(image)
         self.rendering_end = time.time()
-        self.ffmpeg_start = time.time()
+
+        buffer = QBuffer()
+
+        self.saving_images_start = time.time()
+        for i, im in enumerate(images):
+            print(f"saving image {i} to buffer")
+            im.save(buffer, "jpeg", quality=100)
+        self.saving_images_end = time.time()
 
         # https://stackoverflow.com/a/13298538
         # -y overwrites output file if exists
         # -r specifies framerate (frames per second)
-        p = Popen(["ffmpeg", "-y", "-f", "image2pipe", "-r",
-            str(self.framerate), "-vcodec", "mjpeg", "-pix_fmt", "yuv420p",
-            "-i", "-", "out_ffmpeg.mp4"],
-            stdin=PIPE)
+        crf = "23" # 23 is default
+        preset = "medium" # medium is default
+        codec = "mjpeg"
+        args = [
+            "ffmpeg",
+            "-y",
+            "-f", "image2pipe",
+            "-r", str(self.framerate),
+            "-pix_fmt", "yuv420p",
+            "-benchmark",
+            "-vcodec", codec,
+            "-i", "-",
+            "-vcodec", "libx264",
+            "-preset", preset,
+            "-crf", crf,
+            "out_ffmpeg.mp4"
+        ]
 
-        for i, im in enumerate(images):
-            print(f"saving image {i} to stdin")
-            im.save(p.stdin, "JPEG", quality=100)
+        self.ffmpeg_start = time.time()
+        p = Popen(args, stdin=PIPE)
+        print("writing buffer to ffmpeg")
+        p.stdin.write(buffer.data())
         p.stdin.close()
 
         print("converting images to video with ffmpeg")
