@@ -19,6 +19,9 @@ if "profile" not in __builtins__:
     def profile(f):
         return f
 
+class InvalidEventException(Exception):
+    pass
+
 @dataclass
 class Event:
     username: str
@@ -29,6 +32,42 @@ class Event:
     z: int
     # time in ms
     t: int
+
+    pattern = (
+        r"\[(.*?)\] \[(.*?)\] (\w*?) (?:is|logged out|logged in) at (.*?) "
+        "\((.*?),(.*?),(.*?)\)"
+    )
+
+    @classmethod
+    def parse(cls, raw_event):
+        if "is at" in raw_event:
+            EventClass = Ping
+        elif "logged out" in raw_event:
+            EventClass = Logout
+        elif "logged in" in raw_event:
+            EventClass = Login
+        else:
+            raise InvalidEventException()
+
+        result = re.match(cls.pattern, raw_event)
+        if not result:
+            raise InvalidEventException()
+        time_str, nl_group, username, snitch_name, x, y, z = result.groups()
+        x = int(x)
+        y = int(y)
+        z = int(z)
+        # try both date formats, TODO make this cleaner (less nesting)
+        try:
+            time = datetime.strptime(time_str, "%H:%M:%S")
+        except:
+            try:
+                time = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
+            except:
+                raise InvalidEventException()
+
+        # minecraft uses y as height, to preserve my sanity we're going to swap
+        # and use z as height
+        return EventClass(username, snitch_name, nl_group, x, z, y, time)
 
 @dataclass
 class Snitch:
@@ -89,32 +128,13 @@ def parse_events(path):
     with open(path, encoding="utf8") as f:
         raw_events = f.readlines()
 
-    pattern = r"\[(.*?)\] \[(.*?)\] (\w*?) (?:is|logged out|logged in) at (.*?) \((.*?),(.*?),(.*?)\)"
-
     for raw_event in raw_events:
-        if "is at" in raw_event:
-            EventClass = Ping
-        elif "logged out" in raw_event:
-            EventClass = Logout
-        elif "logged in" in raw_event:
-            EventClass = Login
-        else:
-            # ignore lines which don't match the format
+        try:
+            event = Event.parse(raw_event)
+        # just ignore invalid events to facilitate copy+pasting of discord logs
+        except InvalidEventException:
             continue
 
-        result = re.match(pattern, raw_event)
-        time_str, nl_group, username, snitch_name, x, y, z = result.groups()
-        x = int(x)
-        y = int(y)
-        z = int(z)
-        try:
-            time = datetime.strptime(time_str, "%H:%M:%S")
-        except:
-            time = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
-
-        # minecraft uses y as height, to preserve my sanity we're going to swap and
-        # use z as height
-        event = EventClass(username, snitch_name, nl_group, x, z, y, time)
         events.append(event)
 
     event_start_td = min(event.t for event in events)
