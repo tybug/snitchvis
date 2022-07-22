@@ -18,14 +18,13 @@ parser.add_argument("-s", "--snitch-db", help="snitch database (.sqlite) file "
 parser.add_argument("-r", "--record", help="record and output to a file "
     "instead o showing an interactive QApplication", default=False,
     action="store_true")
-parser.add_argument("-p", "--pixels", help="pixel width of the generated "
-    "images. Only has an effect when -r/--record is passed", default=500,
-    type=int)
+parser.add_argument("-p", "--pixels", help="width and height of the generated "
+    "video, in pixels", default=500, type=int)
 parser.add_argument("-f", "--fps", help="frames per second of the generated "
     "video", default=30, type=int)
 parser.add_argument("-d", "--duration", help="duration of the generated video, "
     "in seconds", default=10, type=int)
-parser.add_argument("--fade", help="percentage of the video snitch pings "
+parser.add_argument("--fade", help="what percentage of the video snitch pings "
     "should be visible for", default=5, type=float)
 args = parser.parse_args()
 
