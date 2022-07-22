@@ -30,8 +30,7 @@ class Event:
     x: int
     y: int
     z: int
-    # time in ms
-    t: int
+    t: datetime
 
     pattern = (
         r"\[(.*?)\] \[(.*?)\] (\w*?) (?:is|logged out|logged in) at (.*?) "
@@ -104,6 +103,12 @@ class Snitch:
             broken_ts=row[15], gone_ts=row[16], tags=row[17], notes=row[18],
             events=[])
 
+    def __hash__(self):
+        return hash((self.x, self.y, self.z))
+
+    def __eq__(self, other):
+        return self.x == other.x and self.y == other.y and self.z == other.z
+
 class Ping(Event):
     pass
 class Logout(Event):
@@ -139,7 +144,7 @@ def parse_events(path):
 
     return events
 
-def parse_snitches(path, events):
+def parse_snitches(path):
     conn = sqlite3.connect(path)
     cur = conn.cursor()
     rows = cur.execute("SELECT * FROM snitches_v2")
@@ -151,10 +156,6 @@ def parse_snitches(path, events):
             continue
         snitches.append(snitch)
 
-    snitch_by_pos = {(snitch.x, snitch.y): snitch for snitch in snitches}
-    for event in events:
-        snitch = snitch_by_pos[(event.x, event.y)]
-        snitch.events.append(event)
     return snitches
 
 def create_users(events):
@@ -167,6 +168,14 @@ def create_users(events):
 
     return users
 
+def snitches_from_events(events):
+    snitches = set()
+    for event in events:
+        snitch = Snitch(None, event.x, event.y, event.z, event.namelayer_group,
+            None, event.snitch_name, None, None, None, None, None, None, None,
+            None, None, None, None, None, [])
+        snitches.add(snitch)
+    return snitches
 
 class Snitchvis(QMainWindow):
     def __init__(self, snitches, events, users, *,
@@ -362,7 +371,6 @@ class SnitchVisRecord(QApplication):
         self.ffmpeg_start = None
         self.ffmpeg_end = None
 
-
         # our events cover `duration` ms (in game time), and we need to
         # compress that into `duration_rt` ms (in real time) at
         # `framerate` fps. we have `framerate * duration_rt / 1000` frames
@@ -371,8 +379,11 @@ class SnitchVisRecord(QApplication):
 
         # in ms (relative to real time)
         duration_rt = duration
-        # in ms (relative to game time)
-        duration = max(e.t for e in self.events)
+
+        max_t = max(e.t for e in self.events)
+        min_t = min(e.t for e in self.events)
+        # in ms (relative to game time). convert to ms from datetime
+        duration = (max_t - min_t).total_seconds() * 1000
 
         self.num_frames = int((duration_rt / 1000) * self.framerate)
         # in ms (relative to game time)

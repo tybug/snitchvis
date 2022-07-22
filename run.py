@@ -33,7 +33,7 @@ args = parser.parse_args()
 event_file = Path(".") / args.input
 snitch_db = Path(".") / args.snitch_db
 events = parse_events(event_file)
-snitches = parse_snitches(snitch_db, events)
+snitches = parse_snitches(snitch_db)
 users = create_users(events)
 
 # args

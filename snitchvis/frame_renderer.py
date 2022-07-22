@@ -66,8 +66,16 @@ class FrameRenderer:
 
         self.event_start_td = min(event.t for event in events)
         # normalize all event times to the earliest event, and convert to ms
+        snitches_by_loc = {(s.x, s.y, s.z): s for s in snitches}
+
+        for snitch in snitches:
+            snitch.events = []
+
         for event in events:
             event.t = int((event.t - self.event_start_td).total_seconds() * 1000)
+            snitch = snitches_by_loc[(event.x, event.y, event.z)]
+            snitch.events.append(event)
+
         events = sorted(events, key = lambda event: event.t)
 
         max_t = max(e.t for e in events)
