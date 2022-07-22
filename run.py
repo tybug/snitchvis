@@ -16,7 +16,7 @@ parser.add_argument("-i", "--input", help="event file input to parse",
 parser.add_argument("-s", "--snitch-db", help="snitch database (.sqlite) file "
     "to parse", required=True)
 parser.add_argument("-r", "--record", help="record and output to a file "
-    "instead o showing an interactive QApplication", default=False,
+    "instead of showing an interactive QApplication", default=False,
     action="store_true")
 parser.add_argument("-p", "--pixels", help="width and height of the generated "
     "video, in pixels", default=500, type=int)
@@ -30,7 +30,7 @@ args = parser.parse_args()
 
 event_file = Path(".") / args.input
 snitch_db = Path(".") / args.snitch_db
-event_start_td, events = parse_events(event_file)
+events = parse_events(event_file)
 snitches = parse_snitches(snitch_db, events)
 users = create_users(events)
 
@@ -45,10 +45,10 @@ event_fade_percentage = args.fade
 t_parse = time.time()
 
 if args.record:
-    vis = SnitchVisRecord(snitches, events, users, event_start_td, size, fps,
+    vis = SnitchVisRecord(snitches, events, users, size, fps,
         duration, show_all_snitches, event_fade_percentage)
 else:
-    vis = SnitchvisApp(snitches, events, users, event_start_td,
+    vis = SnitchvisApp(snitches, events, users,
         speeds=[0.25, 0.5, 1, 2.5, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000],
         show_all_snitches=show_all_snitches)
 

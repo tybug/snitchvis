@@ -18,8 +18,7 @@ class Renderer(QFrame):
     pause_signal = pyqtSignal()
     loaded_signal = pyqtSignal()
 
-    def __init__(self, snitches, events, users, start_speed, show_all_snitches,
-        event_start_td):
+    def __init__(self, snitches, events, users, start_speed, show_all_snitches):
         super().__init__()
         self.setMinimumSize(GAMEPLAY_WIDTH + GAMEPLAY_PADDING_WIDTH * 2,
             GAMEPLAY_HEIGHT + GAMEPLAY_PADDING_HEIGHT * 2)
@@ -33,7 +32,6 @@ class Renderer(QFrame):
         self.setMouseTracking(True)
 
         self.playback_start = 0
-        self.playback_end = max(event.t for event in events)
 
         self.clock = Timer(start_speed, self.playback_start)
         self.paused = False
@@ -44,8 +42,11 @@ class Renderer(QFrame):
         # 62 fps (1000ms / 60frames but the result can only be a integer)
         self.timer.start(int(1000/60))
 
-        self.frame_renderer = FrameRenderer(self, snitches, events, users,
-            show_all_snitches, event_start_td)
+        # let renderer normalize the events for us
+        self.renderer = FrameRenderer(self, snitches, events, users,
+            show_all_snitches)
+
+        self.playback_end = max(event.t for event in self.renderer.events)
 
         # black background
         pal = QPalette()
@@ -134,10 +135,10 @@ class Renderer(QFrame):
         # convert local screen coordinates (where 0,0 is the upper left corner)
         # to world (in-game) coordinates.
 
-        x = self.frame_renderer.world_x(x)
-        y = self.frame_renderer.world_y(y)
-        self.frame_renderer.current_mouse_x = x
-        self.frame_renderer.current_mouse_y = y
+        x = self.renderer.world_x(x)
+        y = self.renderer.world_y(y)
+        self.renderer.current_mouse_x = x
+        self.renderer.current_mouse_y = y
 
         cursor = QCursor(Qt.CursorShape.ArrowCursor)
         for user in self.users:
@@ -176,6 +177,6 @@ class Renderer(QFrame):
         self.clock.resume()
 
     def paintEvent(self, _event):
-        self.frame_renderer.paint_object = self
-        self.frame_renderer.t = int(self.clock.get_time())
-        self.frame_renderer.render()
+        self.renderer.paint_object = self
+        self.renderer.t = int(self.clock.get_time())
+        self.renderer.render()

@@ -137,13 +137,7 @@ def parse_events(path):
 
         events.append(event)
 
-    event_start_td = min(event.t for event in events)
-    # normalize all event times to the earliest event, and convert to ms
-    for event in events:
-        event.t = int((event.t - event_start_td).total_seconds() * 1000)
-    events = sorted(events, key = lambda event: event.t)
-
-    return event_start_td, events
+    return events
 
 def parse_snitches(path, events):
     conn = sqlite3.connect(path)
@@ -175,7 +169,7 @@ def create_users(events):
 
 
 class Snitchvis(QMainWindow):
-    def __init__(self, snitches, events, users, event_start_td, *,
+    def __init__(self, snitches, events, users, *,
         speeds=[0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 3.0, 5.0, 10.0],
         start_speed=1, show_all_snitches=False
     ):
@@ -184,8 +178,8 @@ class Snitchvis(QMainWindow):
         self.setAutoFillBackground(True)
         self.setWindowTitle("SnitchVis")
 
-        self.interface = Interface(snitches, events, users, event_start_td,
-            speeds, start_speed, show_all_snitches)
+        self.interface = Interface(snitches, events, users, speeds, start_speed,
+            show_all_snitches)
         self.interface.renderer.loaded_signal.connect(self.on_load)
         self.setCentralWidget(self.interface)
 
@@ -244,7 +238,7 @@ class SnitchvisApp(QApplication):
     """
     ``speeds`` must contain ``start_speed``.
     """
-    def __init__(self, snitches, events, users, event_start_td, *,
+    def __init__(self, snitches, events, users, *,
         speeds=[0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 3.0, 5.0, 10.0],
         start_speed=1, show_all_snitches=False
     ):
@@ -256,7 +250,6 @@ class SnitchvisApp(QApplication):
         self.snitches = snitches
         self.events = events
         self.users = users
-        self.event_start_td = event_start_td
         self.speeds = speeds
         self.start_speed = start_speed
         self.show_all_snitches = show_all_snitches
@@ -271,7 +264,7 @@ class SnitchvisApp(QApplication):
         # ``QWidget`` before a ``QApplication``, so delay until here, which is
         # all it's necessary for.
         self.visualizer = Snitchvis(self.snitches, self.events, self.users,
-            self.event_start_td, speeds=self.speeds, start_speed=self.start_speed,
+            speeds=self.speeds, start_speed=self.start_speed,
             show_all_snitches=self.show_all_snitches)
         self.visualizer.interface.renderer.loaded_signal.connect(self.on_load)
         self.visualizer.show()
@@ -345,7 +338,7 @@ class SnitchvisApp(QApplication):
 
 
 class SnitchVisRecord(QApplication):
-    def __init__(self, snitches, events, users, event_start_td, size, framerate, duration,
+    def __init__(self, snitches, events, users, size, framerate, duration,
         show_all_snitches, event_fade_percentage):
         # https://stackoverflow.com/q/13215120
         super().__init__(['-platform', 'minimal'])
@@ -357,7 +350,6 @@ class SnitchVisRecord(QApplication):
         # frames per second
         self.framerate = framerate
         self.show_all_snitches = show_all_snitches
-        self.event_start_td = event_start_td
 
         # for profling, written to but not read by us
         self.instantiation_start = None
@@ -401,7 +393,7 @@ class SnitchVisRecord(QApplication):
     def exec(self):
         self.instantiation_start = time.time()
         renderer = FrameRenderer(None, self.snitches, self.events, self.users,
-            self.show_all_snitches, self.event_start_td)
+            self.show_all_snitches)
         renderer.event_fade = self.event_fade
         renderer.draw_coordinates = False
         self.instantiation_end = time.time()

@@ -61,14 +61,17 @@ class FrameRenderer:
     object.
     """
     @profile
-    def __init__(self, paint_object, snitches, events, users, show_all_snitches,
-        event_start_td
-    ):
+    def __init__(self, paint_object, snitches, events, users, show_all_snitches):
         super().__init__()
 
-        self.event_start_td = event_start_td
+        self.event_start_td = min(event.t for event in events)
+        # normalize all event times to the earliest event, and convert to ms
+        for event in events:
+            event.t = int((event.t - self.event_start_td).total_seconds() * 1000)
+        events = sorted(events, key = lambda event: event.t)
+
         max_t = max(e.t for e in events)
-        self.event_end_td = event_start_td + timedelta(milliseconds=max_t)
+        self.event_end_td = self.event_start_td + timedelta(milliseconds=max_t)
         self.users = users
         # hash by username for convenience
         self.users_by_username = {user.username: user for user in self.users}
