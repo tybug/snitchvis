@@ -25,7 +25,7 @@ parser.add_argument("-f", "--fps", help="frames per second of the generated "
 parser.add_argument("-d", "--duration", help="duration of the generated video, "
     "in seconds", default=10, type=int)
 parser.add_argument("--fade", help="what percentage of the video snitch pings "
-    "should be visible for", default=5, type=float)
+    "should be visible for", default=10, type=float)
 args = parser.parse_args()
 
 event_file = Path(".") / args.input
