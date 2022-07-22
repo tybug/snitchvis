@@ -26,6 +26,8 @@ parser.add_argument("-d", "--duration", help="duration of the generated video, "
     "in seconds", default=10, type=int)
 parser.add_argument("--fade", help="what percentage of the video snitch pings "
     "should be visible for", default=10, type=float)
+parser.add_argument("-o", "--output", help="filename to output to ",
+    default="out.mp4")
 args = parser.parse_args()
 
 event_file = Path(".") / args.input
@@ -41,12 +43,13 @@ fps = args.fps
 # convert seconds to ms
 duration = args.duration * 1000
 event_fade_percentage = args.fade
+output_file = args.output
 
 t_parse = time.time()
 
 if args.record:
     vis = SnitchVisRecord(snitches, events, users, size, fps,
-        duration, show_all_snitches, event_fade_percentage)
+        duration, show_all_snitches, event_fade_percentage, output_file)
 else:
     vis = SnitchvisApp(snitches, events, users,
         speeds=[0.25, 0.5, 1, 2.5, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000],

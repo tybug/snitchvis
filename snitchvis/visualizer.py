@@ -339,7 +339,7 @@ class SnitchvisApp(QApplication):
 
 class SnitchVisRecord(QApplication):
     def __init__(self, snitches, events, users, size, framerate, duration,
-        show_all_snitches, event_fade_percentage):
+        show_all_snitches, event_fade_percentage, output_file):
         # https://stackoverflow.com/q/13215120
         super().__init__(['-platform', 'minimal'])
 
@@ -350,6 +350,7 @@ class SnitchVisRecord(QApplication):
         # frames per second
         self.framerate = framerate
         self.show_all_snitches = show_all_snitches
+        self.output_file = output_file
 
         # for profling, written to but not read by us
         self.instantiation_start = None
@@ -446,7 +447,7 @@ class SnitchVisRecord(QApplication):
             "-vcodec", "libx264",
             "-preset", preset,
             "-crf", crf,
-            "out_ffmpeg.mp4"
+            self.output_file
         ]
 
         self.ffmpeg_start = time.time()
