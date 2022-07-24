@@ -345,9 +345,13 @@ class SnitchvisApp(QApplication):
         """
         pass
 
+# in ms (relative to real time), shortest possible video length
+MINIMUM_VIDEO_DURATION = 500
+# in ms (relative to real time)
+MINIMUM_EVENT_FADE = 1200
 
 class SnitchVisRecord(QApplication):
-    def __init__(self, snitches, events, users, size, framerate, duration,
+    def __init__(self, snitches, events, users, size, framerate, duration_rt,
         show_all_snitches, event_fade_percentage, output_file):
         # https://stackoverflow.com/q/13215120
         super().__init__(['-platform', 'minimal'])
@@ -377,13 +381,19 @@ class SnitchVisRecord(QApplication):
         # to work with, and each frame needs to take
         # `duration / num_frames` seconds.
 
-        # in ms (relative to real time)
-        duration_rt = duration
+        # duration_rt is in ms (relative to real time)
 
         max_t = max(e.t for e in self.events)
         min_t = min(e.t for e in self.events)
         # in ms (relative to game time). convert to ms from datetime
         duration = (max_t - min_t).total_seconds() * 1000
+
+        # realtime duration can't be longer than ingame duration, or we'd have
+        # to elongate the video instead of compressing it.
+        # also, neither realtime duration nor ingame duration can be smaller
+        # than MINIMUM_VIDEO_DURATION, to avoid divide by zero errors.
+        duration = max(MINIMUM_VIDEO_DURATION, duration)
+        duration_rt = np.clip(MINIMUM_VIDEO_DURATION, duration_rt, duration)
 
         self.num_frames = int((duration_rt / 1000) * self.framerate)
         # in ms (relative to game time)
@@ -392,6 +402,11 @@ class SnitchVisRecord(QApplication):
         self.frame_duration_rt = duration_rt / self.num_frames
         # in ms (relative to game time)
         self.event_fade = duration * (event_fade_percentage / 100)
+        # event fade can't be smaller than MINIMUM_EVENT_FADE
+        # convert real time (units of MINIMUM_EVENT_FADE) to in game time
+        # (units of event_fade)
+        min_event_fade_gametime = MINIMUM_EVENT_FADE * (duration / duration_rt)
+        self.event_fade = max(self.event_fade, min_event_fade_gametime)
 
         # we want to add a little bit of padding farmes beyond when the last
         # frame occurs, so that the last event doesn't appear to get cut off.
