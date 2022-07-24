@@ -79,6 +79,7 @@ class Snitch:
     name: str
     dormat_ts: int
     cull_ts: int
+    first_seen_ts: int
     last_seen_ts: int
     created_ts: int
     created_by_uuid: str
@@ -89,19 +90,16 @@ class Snitch:
     gone_ts: int
     tags: str
     notes: str
-    # events that occurred at this snitch
-    events: list[Event]
 
     @staticmethod
-    def from_row(row):
+    def from_snitchmod(row):
         # swap z and y for my sanity
         return Snitch(world=row[0], x=row[1], z=row[2], y=row[3],
             group_name=row[4], type=row[5], name=row[6], dormat_ts=row[7],
-            cull_ts=row[8], last_seen_ts=row[9], created_ts=row[10],
-            created_by_uuid=row[11], renamde_ts=row[12],
-            renamed_by_uuid=row[13], lost_jalist_access_ts=row[14],
-            broken_ts=row[15], gone_ts=row[16], tags=row[17], notes=row[18],
-            events=[])
+            cull_ts=row[8], first_seen_ts=row[9], last_seen_ts=row[10], created_ts=row[11],
+            created_by_uuid=row[12], renamde_ts=row[13],
+            renamed_by_uuid=row[14], lost_jalist_access_ts=row[15],
+            broken_ts=row[16], gone_ts=row[17], tags=row[18], notes=row[19])
 
     def __hash__(self):
         return hash((self.x, self.y, self.z))
@@ -150,7 +148,7 @@ def parse_snitches(path):
     rows = cur.execute("SELECT * FROM snitches_v2")
     snitches = []
     for row in rows:
-        snitch = Snitch.from_row(row)
+        snitch = Snitch.from_snitchmod(row)
         # don't visualize snitches which are broken or gone
         if snitch.broken_ts or snitch.gone_ts:
             continue
@@ -173,7 +171,7 @@ def snitches_from_events(events):
     for event in events:
         snitch = Snitch(None, event.x, event.y, event.z, event.namelayer_group,
             None, event.snitch_name, None, None, None, None, None, None, None,
-            None, None, None, None, None, [])
+            None, None, None, None, None, None)
         snitches.add(snitch)
     return snitches
 
@@ -348,7 +346,7 @@ class SnitchvisApp(QApplication):
 # in ms (relative to real time), shortest possible video length
 MINIMUM_VIDEO_DURATION = 500
 # in ms (relative to real time)
-MINIMUM_EVENT_FADE = 1200
+MINIMUM_EVENT_FADE = 1000
 
 class SnitchVisRecord(QApplication):
     def __init__(self, snitches, events, users, size, framerate, duration_rt,
