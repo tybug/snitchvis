@@ -66,6 +66,5 @@ if args.record:
     print(f"time (total): {time.time() - t_start}")
 
 # TODO handle overlapping events on the same snitch
-# TODO try copying the buffer per frame and only redrawing what's changed
 # TODO pad the first event like we did the last event? less of a concern but
 # will probably make it look nicer due to seeing the fade in
