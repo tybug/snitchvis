@@ -19,6 +19,10 @@ GAMEPLAY_PADDING_HEIGHT = 20
 GAMEPLAY_WIDTH = 600
 GAMEPLAY_HEIGHT = 450
 
+# min width and height of our events bounding box. GAMEPLAY_PADDING_* gets
+# applied on top of this.
+BOUNDING_BOX_MIN_SIZE = 100
+
 class Draw(Enum):
     ALL = auto()
     ONLY_BASE_FRAME = auto()
@@ -115,6 +119,17 @@ class FrameRenderer:
         if y_dist < x_dist:
             self.max_y += (dist_diff / 2)
             self.min_y -= (dist_diff / 2)
+
+        # should be the same as max_y - min_y after our adjustments above
+        bounding_size = self.max_x - self.min_x
+        if bounding_size < BOUNDING_BOX_MIN_SIZE:
+            diff = BOUNDING_BOX_MIN_SIZE - bounding_size
+            # expand both x and y by `bounding_size` to a total size of
+            # BOUNDING_BOX_MIN_SIZE
+            self.max_x += (diff / 2)
+            self.min_x -= (diff / 2)
+            self.max_y += (diff / 2)
+            self.min_y -= (diff / 2)
 
         self.playback_start = 0
         self.playback_end = max(event.t for event in events)
