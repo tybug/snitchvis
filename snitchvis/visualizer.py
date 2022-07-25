@@ -77,13 +77,13 @@ class Snitch:
     group_name: str
     type: str
     name: str
-    dormat_ts: int
+    dormant_ts: int
     cull_ts: int
     first_seen_ts: int
     last_seen_ts: int
     created_ts: int
     created_by_uuid: str
-    renamde_ts: int
+    renamed_ts: int
     renamed_by_uuid: str
     lost_jalist_access_ts: int
     broken_ts: int
@@ -95,9 +95,9 @@ class Snitch:
     def from_snitchmod(row):
         # swap z and y for my sanity
         return Snitch(world=row[0], x=row[1], z=row[2], y=row[3],
-            group_name=row[4], type=row[5], name=row[6], dormat_ts=row[7],
+            group_name=row[4], type=row[5], name=row[6], dormant_ts=row[7],
             cull_ts=row[8], first_seen_ts=row[9], last_seen_ts=row[10], created_ts=row[11],
-            created_by_uuid=row[12], renamde_ts=row[13],
+            created_by_uuid=row[12], renamed_ts=row[13],
             renamed_by_uuid=row[14], lost_jalist_access_ts=row[15],
             broken_ts=row[16], gone_ts=row[17], tags=row[18], notes=row[19])
 
