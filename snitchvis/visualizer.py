@@ -32,13 +32,18 @@ class Event:
     z: int
     t: datetime
 
-    pattern = (
+    pattern_raw = (
+        r"`\[(.*?)\]` `\[(.*?)\]` \*\*(\w*?)\*\* (?:is|logged out|logged in) "
+        "at (.*?) \((.*?),(.*?),(.*?)\)"
+    )
+
+    pattern_display = (
         r"\[(.*?)\] \[(.*?)\] (\w*?) (?:is|logged out|logged in) at (.*?) "
         "\((.*?),(.*?),(.*?)\)"
     )
 
     @classmethod
-    def parse(cls, raw_event):
+    def parse(cls, raw_event, markdown=True):
         if "is at" in raw_event:
             EventClass = Ping
         elif "logged out" in raw_event:
@@ -48,7 +53,8 @@ class Event:
         else:
             raise InvalidEventException()
 
-        result = re.match(cls.pattern, raw_event)
+        pattern = cls.pattern_raw if markdown else cls.pattern_display
+        result = re.match(pattern, raw_event)
         if not result:
             raise InvalidEventException()
         time_str, nl_group, username, snitch_name, x, y, z = result.groups()
@@ -134,7 +140,9 @@ def parse_events(path):
 
     for raw_event in raw_events:
         try:
-            event = Event.parse(raw_event)
+            # assume events have been copy-pasted from discord and
+            # so don't have markdown
+            event = Event.parse(raw_event, markdown=False)
         # just ignore invalid events to facilitate copy+pasting of discord logs
         except InvalidEventException:
             continue
