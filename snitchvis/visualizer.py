@@ -102,10 +102,11 @@ class Snitch:
             broken_ts=row[16], gone_ts=row[17], tags=row[18], notes=row[19])
 
     def __hash__(self):
-        return hash((self.x, self.y, self.z))
+        return hash((self.world, self.x, self.y, self.z))
 
     def __eq__(self, other):
-        return self.x == other.x and self.y == other.y and self.z == other.z
+        return (self.x == other.x and self.y == other.y and self.z == other.z
+            and self.world == other.world)
 
 class Ping(Event):
     pass
