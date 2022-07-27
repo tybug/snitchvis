@@ -357,12 +357,9 @@ MINIMUM_VIDEO_DURATION = 500
 # in ms (relative to real time)
 MINIMUM_EVENT_FADE = 1000
 
-class SnitchVisRecord(QApplication):
+class SnitchVisRecord:
     def __init__(self, snitches, events, users, size, framerate, duration_rt,
         show_all_snitches, event_fade_percentage, output_file):
-        # https://stackoverflow.com/q/13215120
-        super().__init__(['-platform', 'minimal'])
-
         self.snitches = snitches
         self.events = events
         self.users = users
@@ -424,7 +421,7 @@ class SnitchVisRecord(QApplication):
         self.num_frames += int(padding_t / self.frame_duration_rt)
 
     @profile
-    def exec(self):
+    def render(self):
         self.instantiation_start = time.time()
         renderer = FrameRenderer(None, self.snitches, self.events, self.users,
             self.show_all_snitches)
