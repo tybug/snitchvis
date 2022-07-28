@@ -26,13 +26,11 @@ class Renderer(QFrame):
         self.users = users
         # hash by username for convenience
         self.users_by_username = {user.username: user for user in self.users}
-
         self.events = events
 
         self.setMouseTracking(True)
 
         self.playback_start = 0
-
         self.clock = Timer(start_speed, self.playback_start)
         self.paused = False
         self.play_direction = 1
