@@ -155,15 +155,7 @@ def parse_snitches(path):
     conn = sqlite3.connect(path)
     cur = conn.cursor()
     rows = cur.execute("SELECT * FROM snitches_v2")
-    snitches = []
-    for row in rows:
-        snitch = Snitch.from_snitchmod(row)
-        # don't visualize snitches which are broken or gone
-        if snitch.broken_ts or snitch.gone_ts:
-            continue
-        snitches.append(snitch)
-
-    return snitches
+    return [Snitch.from_snitchmod(row) for row in rows]
 
 def create_users(events):
     users = []

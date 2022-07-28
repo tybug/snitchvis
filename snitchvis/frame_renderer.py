@@ -68,6 +68,11 @@ class FrameRenderer:
     def __init__(self, paint_object, snitches, events, users, show_all_snitches):
         super().__init__()
 
+        # filter out snitches which are broken or gone. We may want to display
+        # these in a different color/shape later, or have a flag to display
+        # missing snitches in a fancy way.
+        snitches = [s for s in snitches if not s.broken_ts and not s.gone_ts]
+
         self.event_start_td = min(event.t for event in events)
         # normalize all event times to the earliest event, and convert to ms
         snitches_by_loc = {(s.x, s.y, s.z): s for s in snitches}
