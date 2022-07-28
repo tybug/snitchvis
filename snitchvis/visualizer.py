@@ -170,9 +170,13 @@ def create_users(events):
 def snitches_from_events(events):
     snitches = set()
     for event in events:
-        snitch = Snitch(None, event.x, event.y, event.z, event.namelayer_group,
-            None, event.snitch_name, None, None, None, None, None, None, None,
-            None, None, None, None, None, None)
+        # kira events don't display the world/dimension, so just assume it
+        # happened in the overworld. This WILL get us into trouble when we parse
+        # nether snitch events, but there's no way to differentiate, so this is
+        # the best we can do.
+        snitch = Snitch("world", event.x, event.y, event.z,
+            event.namelayer_group, None, event.snitch_name, None, None, None,
+            None, None, None, None, None, None, None, None, None, None)
         snitches.add(snitch)
     return snitches
 
