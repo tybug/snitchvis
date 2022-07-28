@@ -132,6 +132,12 @@ class User:
     info_pos_rect: QRect = QRect(0, 0, 0, 0)
     enabled: bool = True
 
+    def __hash__(self):
+        return hash((self.username))
+
+    def __eq__(self, other):
+        return self.username == other.username
+
 def parse_events(path):
     events = []
 
