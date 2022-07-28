@@ -1,8 +1,9 @@
 from datetime import timedelta
 import os
 from enum import Enum, auto
+from collections import defaultdict
 
-from PyQt6.QtGui import QColor, QPainter, QPixmap
+from PyQt6.QtGui import QColor, QPainter, QPixmap, QPen
 from PyQt6.QtCore import Qt, QPointF, QRectF, QRect
 
 from snitchvis.utils import resource_path
@@ -65,7 +66,8 @@ class FrameRenderer:
     object.
     """
     @profile
-    def __init__(self, paint_object, snitches, events, users, show_all_snitches):
+    def __init__(self, paint_object, snitches, events, users, show_all_snitches,
+        event_mode="square"):
         super().__init__()
 
         # filter out snitches which are broken or gone. We may want to display
@@ -74,16 +76,12 @@ class FrameRenderer:
         snitches = [s for s in snitches if not s.broken_ts and not s.gone_ts]
 
         self.event_start_td = min(event.t for event in events)
-        # normalize all event times to the earliest event, and convert to ms
-        snitches_by_loc = {(s.x, s.y, s.z): s for s in snitches}
 
-        for snitch in snitches:
-            snitch.events = []
+        self.snitches_by_loc = {(s.x, s.y, s.z): s for s in snitches}
 
         for event in events:
+            # normalize all event times to the earliest event, and convert to ms
             event.t = int((event.t - self.event_start_td).total_seconds() * 1000)
-            snitch = snitches_by_loc[(event.x, event.y, event.z)]
-            snitch.events.append(event)
 
         events = sorted(events, key = lambda event: event.t)
 
@@ -100,6 +98,10 @@ class FrameRenderer:
         # 5 minutes, in ms (relative to game time)
         self.event_fade = 5 * 60 * 1000
         self.draw_coordinates = True
+        # how to visualize events. One of "square" or "line". square highlights
+        # the snitch the event was located at, and line draws lines between
+        # events by the same player which aren't too far apart in time.
+        self.event_mode = event_mode
 
         # figure out a bounding box for our events.
         # if we want to show all our snitches instead of all our events, bound
@@ -425,26 +427,36 @@ class FrameRenderer:
     @profile
     @draw(Draw.ALL_EXCEPT_BASE_FRAME)
     def draw_snitch_events(self):
+        user_to_events = defaultdict(list)
+
         # snitch events
-        for snitch in self.visible_snitches:
-            color = None
-            alpha = None
-
-            for event in snitch.events:
-                if not self.t - self.event_fade <= event.t <= self.t:
-                    continue
-                user = self.users_by_username[event.username]
-                # don't draw events from disabled users
-                if not user.enabled:
-                    continue
-                color = user.color
-                alpha = (1 - (self.t - event.t) / self.event_fade)
-
-            if not (color and alpha):
+        for event in self.events:
+            if not self.t - self.event_fade <= event.t <= self.t:
                 continue
 
+            snitch = self.snitches_by_loc[(event.x, event.y, event.z)]
+            user = self.users_by_username[event.username]
+
+            if self.event_mode == "line":
+                # avoid drawing rectangles, we'll just draw lines
+                user_to_events[user].append(event)
+                continue
+
+            # don't draw events from disabled users
+            if not user.enabled:
+                continue
+
+            alpha = (1 - (self.t - event.t) / self.event_fade)
             self.draw_rectangle(snitch.x - 11, snitch.y - 11, snitch.x + 12,
-                snitch.y + 12, color=color, alpha=alpha)
+                snitch.y + 12, color=user.color, alpha=alpha)
+
+        for user, events in user_to_events.items():
+            for event1, event2 in zip(events, events[1:]):
+                # TODO use event1 or event2 to determine the fade here?
+                alpha = (1 - (self.t - event1.t) / self.event_fade)
+                self.draw_line(event1.x, event1.y, event2.x, event2.y,
+                    color=user.color, alpha=alpha)
+
 
     @profile
     @draw(Draw.ONLY_BASE_FRAME)
@@ -479,9 +491,8 @@ class FrameRenderer:
         self.painter.drawRect(rect)
 
     @profile
-    def draw_line(self, start_x, start_y, end_x, end_y, alpha, pen, width):
-        pen.setWidth(width)
-        self.painter.setPen(pen)
+    def draw_line(self, start_x, start_y, end_x, end_y, *, color, alpha=1):
+        self.painter.setPen(QPen(color, 2))
         self.painter.setOpacity(alpha)
         self.painter.drawLine(self.screen_point(start_x, start_y),
             self.screen_point(end_x, end_y))

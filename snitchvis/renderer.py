@@ -18,7 +18,8 @@ class Renderer(QFrame):
     pause_signal = pyqtSignal()
     loaded_signal = pyqtSignal()
 
-    def __init__(self, snitches, events, users, start_speed, show_all_snitches):
+    def __init__(self, snitches, events, users, start_speed, show_all_snitches,
+        event_mode):
         super().__init__()
         self.setMinimumSize(GAMEPLAY_WIDTH + GAMEPLAY_PADDING_WIDTH * 2,
             GAMEPLAY_HEIGHT + GAMEPLAY_PADDING_HEIGHT * 2)
@@ -42,7 +43,7 @@ class Renderer(QFrame):
 
         # let renderer normalize the events for us
         self.renderer = FrameRenderer(self, snitches, events, users,
-            show_all_snitches)
+            show_all_snitches, event_mode)
 
         self.playback_end = max(event.t for event in self.renderer.events)
 
