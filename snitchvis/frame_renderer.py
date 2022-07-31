@@ -22,7 +22,7 @@ GAMEPLAY_HEIGHT = 450
 
 # min width and height of our events bounding box. GAMEPLAY_PADDING_* gets
 # applied on top of this.
-BOUNDING_BOX_MIN_SIZE = 100
+BOUNDING_BOX_MIN_SIZE = 500
 
 class Draw(Enum):
     ALL = auto()
