@@ -476,7 +476,6 @@ class SnitchVisRecord:
             "-f", "image2pipe",
             "-r", str(self.framerate),
             "-pix_fmt", "yuv420p",
-            "-benchmark",
             "-vcodec", codec,
             "-i", "-",
             "-vcodec", "libx264",
