@@ -484,13 +484,11 @@ class SnitchVisRecord:
         ]
 
         self.ffmpeg_start = time.time()
-        p = Popen(args, stdin=PIPE)
-        print("writing buffer to ffmpeg")
-        p.stdin.write(buffer.data())
-        p.stdin.close()
+        with Popen(args, stdin=PIPE) as p:
+            print("writing buffer to ffmpeg")
+            p.stdin.write(buffer.data())
+            p.stdin.close()
 
-        print("converting images to video with ffmpeg")
-        p.wait()
-        self.ffmpeg_end = time.time()
-
-        QApplication.quit()
+            print("converting images to video with ffmpeg")
+            p.wait()
+            self.ffmpeg_end = time.time()
