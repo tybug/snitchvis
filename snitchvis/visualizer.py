@@ -471,6 +471,8 @@ class SnitchVisRecord:
         args = [
             "ffmpeg",
             "-y",
+            "-hide_banner",
+            "-loglevel", "error",
             "-f", "image2pipe",
             "-r", str(self.framerate),
             "-pix_fmt", "yuv420p",
