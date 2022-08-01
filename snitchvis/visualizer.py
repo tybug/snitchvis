@@ -441,6 +441,9 @@ class SnitchVisRecord:
         renderer.paint_object = image
         renderer.render(drawing_base_frame=True)
         renderer.base_frame = image
+        # world_pixmap takes up tons of memory and we only need it so we can
+        # crop the frame for the base frame, so free it immediately after
+        renderer.world_pixmap = None
 
         for i in range(self.num_frames):
             print(f"rendering image {i} / {self.num_frames}")
