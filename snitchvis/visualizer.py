@@ -3,7 +3,6 @@ import re
 from datetime import datetime
 import sqlite3
 from subprocess import Popen, PIPE
-import time
 
 import numpy as np
 from PyQt6.QtGui import QPalette, QColor, QShortcut, QImage
@@ -372,16 +371,6 @@ class SnitchVisRecord:
         self.event_mode = event_mode
         self.output_file = output_file
 
-        # for profling, written to but not read by us
-        self.instantiation_start = None
-        self.instantiation_end = None
-        self.rendering_start = None
-        self.rendering_end = None
-        self.saving_images_start = None
-        self.saving_images_end = None
-        self.ffmpeg_start = None
-        self.ffmpeg_end = None
-
         # our events cover `duration` ms (in game time), and we need to
         # compress that into `duration_rt` ms (in real time) at
         # `framerate` fps. we have `framerate * duration_rt / 1000` frames
@@ -425,16 +414,10 @@ class SnitchVisRecord:
 
     @profile
     def render(self):
-        self.instantiation_start = time.time()
         renderer = FrameRenderer(None, self.snitches, self.events, self.users,
             self.show_all_snitches, self.event_mode)
         renderer.event_fade = self.event_fade
         renderer.draw_coordinates = False
-        self.instantiation_end = time.time()
-
-        images = []
-
-        self.rendering_start = time.time()
 
         image = QImage(self.size, self.size, QImage.Format.Format_RGB32)
         image.fill(Qt.GlobalColor.black)
@@ -445,25 +428,6 @@ class SnitchVisRecord:
         # crop the frame for the base frame, so free it immediately after
         renderer.world_pixmap = None
 
-        for i in range(self.num_frames):
-            print(f"rendering image {i} / {self.num_frames}")
-            image = QImage(self.size, self.size, QImage.Format.Format_RGB32)
-            image.fill(Qt.GlobalColor.black)
-
-            renderer.paint_object = image
-            renderer.t = int(i * self.frame_duration)
-            renderer.render()
-            images.append(image)
-
-        self.rendering_end = time.time()
-
-        buffer = QBuffer()
-
-        self.saving_images_start = time.time()
-        for i, im in enumerate(images):
-            print(f"saving image {i} to buffer")
-            im.save(buffer, "jpeg", quality=100)
-        self.saving_images_end = time.time()
 
         # https://stackoverflow.com/a/13298538
         # -y overwrites output file if exists
@@ -487,12 +451,23 @@ class SnitchVisRecord:
             self.output_file
         ]
 
-        self.ffmpeg_start = time.time()
         with Popen(args, stdin=PIPE) as p:
-            print("writing buffer to ffmpeg")
-            p.stdin.write(buffer.data())
-            p.stdin.close()
+            for i in range(self.num_frames):
+                print(f"rendering image {i} / {self.num_frames}")
+                image = QImage(self.size, self.size, QImage.Format.Format_RGB32)
+                image.fill(Qt.GlobalColor.black)
 
-            print("converting images to video with ffmpeg")
+                renderer.paint_object = image
+                renderer.t = int(i * self.frame_duration)
+                renderer.render()
+
+                buffer = QBuffer()
+                print(f"saving image {i} to buffer")
+                image.save(buffer, "jpeg", quality=100)
+                p.stdin.write(buffer.data())
+
+            p.stdin.close()
+            print("waiting for ffmpeg to finish")
             p.wait()
-            self.ffmpeg_end = time.time()
+
+        print("done rendering")
