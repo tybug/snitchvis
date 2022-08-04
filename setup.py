@@ -23,6 +23,6 @@ setup(
         "PyQt6"
     ],
     package_data={
-        "circlevis": ["resources/*"]
+        "snitchvis": ["resources/*"]
     }
 )
