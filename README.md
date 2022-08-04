@@ -6,6 +6,8 @@ Can also be used as a desktop application for precision scrubbing and manipulati
 
 Used by [SnitchVisBot](https://github.com/tybug/snitchvisbot) to render snitches from discord.
 
+## Installation
+
 To install:
 
 ```
