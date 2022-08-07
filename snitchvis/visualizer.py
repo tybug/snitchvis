@@ -255,7 +255,7 @@ class SnitchvisApp(QApplication):
     """
     def __init__(self, snitches, events, users, *,
         speeds=[0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 3.0, 5.0, 10.0],
-        start_speed=1, show_all_snitches=False
+        start_speed=1, show_all_snitches=False, mode="square"
     ):
         super().__init__([])
         self.setStyle("Fusion")
@@ -268,6 +268,7 @@ class SnitchvisApp(QApplication):
         self.speeds = speeds
         self.start_speed = start_speed
         self.show_all_snitches = show_all_snitches
+        self.mode = mode
 
     def exec(self):
         """
@@ -280,7 +281,7 @@ class SnitchvisApp(QApplication):
         # all it's necessary for.
         self.visualizer = Snitchvis(self.snitches, self.events, self.users,
             speeds=self.speeds, start_speed=self.start_speed,
-            show_all_snitches=self.show_all_snitches)
+            show_all_snitches=self.show_all_snitches, mode=self.mode)
         self.visualizer.interface.renderer.loaded_signal.connect(self.on_load)
         self.visualizer.show()
         super().exec()
