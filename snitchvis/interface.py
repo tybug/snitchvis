@@ -101,7 +101,7 @@ class Interface(QWidget):
 
     def event_fade_changed(self, new_val):
         # convert minutes to ms
-        self.renderer.event_fade = new_val * 60 * 1000
+        self.renderer.renderer.event_fade = new_val * 60 * 1000
         self.renderer.update()
 
 class Combined(QFrame):
