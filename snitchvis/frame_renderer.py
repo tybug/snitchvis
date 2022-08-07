@@ -67,7 +67,7 @@ class FrameRenderer:
     """
     @profile
     def __init__(self, paint_object, snitches, events, users, show_all_snitches,
-        event_mode="square"):
+        mode="square"):
         super().__init__()
 
         # filter out snitches which are broken or gone. We may want to display
