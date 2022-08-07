@@ -137,7 +137,7 @@ class User:
     def __eq__(self, other):
         return self.username == other.username
 
-def parse_events(path):
+def parse_events(path, markdown=False):
     events = []
 
     with open(path, encoding="utf8") as f:
@@ -145,9 +145,7 @@ def parse_events(path):
 
     for raw_event in raw_events:
         try:
-            # assume events have been copy-pasted from discord and
-            # so don't have markdown
-            event = Event.parse(raw_event, markdown=False)
+            event = Event.parse(raw_event, markdown=markdown)
         # just ignore invalid events to facilitate copy+pasting of discord logs
         except InvalidEventException:
             continue
