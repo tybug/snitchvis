@@ -188,7 +188,7 @@ def snitches_from_events(events):
 class Snitchvis(QMainWindow):
     def __init__(self, snitches, events, users, *,
         speeds=[0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 3.0, 5.0, 10.0],
-        start_speed=1, show_all_snitches=False, event_mode="square"
+        start_speed=1, show_all_snitches=False, mode="square"
     ):
         super().__init__()
 
@@ -196,7 +196,7 @@ class Snitchvis(QMainWindow):
         self.setWindowTitle("SnitchVis")
 
         self.interface = Interface(snitches, events, users, speeds, start_speed,
-            show_all_snitches, event_mode)
+            show_all_snitches, mode)
         self.interface.renderer.loaded_signal.connect(self.on_load)
         self.setCentralWidget(self.interface)
 
@@ -360,7 +360,7 @@ MINIMUM_EVENT_FADE = 1500
 
 class SnitchVisRecord:
     def __init__(self, snitches, events, users, size, framerate, duration_rt,
-        show_all_snitches, event_fade_percentage, event_mode, output_file):
+        show_all_snitches, event_fade_percentage, mode, output_file):
         self.snitches = snitches
         self.events = events
         self.users = users
@@ -368,7 +368,7 @@ class SnitchVisRecord:
         # frames per second
         self.framerate = framerate
         self.show_all_snitches = show_all_snitches
-        self.event_mode = event_mode
+        self.mode = mode
         self.output_file = output_file
 
         # our events cover `duration` ms (in game time), and we need to
@@ -415,7 +415,7 @@ class SnitchVisRecord:
     @profile
     def render(self):
         renderer = FrameRenderer(None, self.snitches, self.events, self.users,
-            self.show_all_snitches, self.event_mode)
+            self.show_all_snitches, self.mode)
         renderer.event_fade = self.event_fade
         renderer.draw_coordinates = False
 

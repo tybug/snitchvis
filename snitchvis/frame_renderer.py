@@ -101,7 +101,7 @@ class FrameRenderer:
         # how to visualize events. One of "square" or "line". square highlights
         # the snitch the event was located at, and line draws lines between
         # events by the same player which aren't too far apart in time.
-        self.event_mode = event_mode
+        self.mode = mode
 
         # figure out a bounding box for our events.
         # if we want to show all our snitches instead of all our events, bound
@@ -437,7 +437,7 @@ class FrameRenderer:
             snitch = self.snitches_by_loc[(event.x, event.y, event.z)]
             user = self.users_by_username[event.username]
 
-            if self.event_mode == "line":
+            if self.mode == "line":
                 # avoid drawing rectangles, we'll just draw lines
                 user_to_events[user].append(event)
                 continue
