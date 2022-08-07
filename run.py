@@ -7,7 +7,7 @@ from argparse import ArgumentParser
 from PyQt6.QtWidgets import QApplication
 
 from snitchvis import (SnitchvisApp, SnitchVisRecord, parse_events,
-    parse_snitches, create_users)
+    parse_snitches, create_users, snitches_from_events)
 
 parser = ArgumentParser()
 parser.add_argument("-a", "--all-snitches", help="show all snitches in the "
@@ -35,7 +35,9 @@ args = parser.parse_args()
 event_file = Path(".") / args.input
 snitch_db = Path(".") / args.snitch_db
 events = parse_events(event_file)
-snitches = parse_snitches(snitch_db)
+snitches = set(parse_snitches(snitch_db))
+# in case we have some event hits which aren't in our database
+snitches |= set(snitches_from_events(events))
 users = create_users(events)
 
 # args
