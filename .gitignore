@@ -6,8 +6,7 @@
 .vscode/
 .env
 snitchvis.egg-info/
-input.txt
-input2.txt
+input*.txt
 snitches.sqlite
 test.py
 sandbox/
