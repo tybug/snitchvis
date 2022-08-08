@@ -186,7 +186,8 @@ def snitches_from_events(events):
 class Snitchvis(QMainWindow):
     def __init__(self, snitches, events, users, *,
         speeds=[0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 3.0, 5.0, 10.0],
-        start_speed=1, show_all_snitches=False, mode="square"
+        start_speed=1, show_all_snitches=False, heatmap_aggregate_perc=0.2,
+        mode="square"
     ):
         super().__init__()
 
@@ -194,7 +195,7 @@ class Snitchvis(QMainWindow):
         self.setWindowTitle("SnitchVis")
 
         self.interface = Interface(snitches, events, users, speeds, start_speed,
-            show_all_snitches, mode)
+            show_all_snitches, heatmap_aggregate_perc, mode)
         self.interface.renderer.loaded_signal.connect(self.on_load)
         self.setCentralWidget(self.interface)
 
@@ -255,7 +256,8 @@ class SnitchvisApp(QApplication):
     """
     def __init__(self, snitches, events, users, *,
         speeds=[0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 3.0, 5.0, 10.0],
-        start_speed=1, show_all_snitches=False, mode="square"
+        start_speed=1, show_all_snitches=False, heatmap_aggregate_perc=0.2,
+        mode="square"
     ):
         super().__init__([])
         self.setStyle("Fusion")
@@ -268,6 +270,7 @@ class SnitchvisApp(QApplication):
         self.speeds = speeds
         self.start_speed = start_speed
         self.show_all_snitches = show_all_snitches
+        self.heatmap_aggregate_perc = heatmap_aggregate_perc
         self.mode = mode
 
     def exec(self):
@@ -281,7 +284,8 @@ class SnitchvisApp(QApplication):
         # all it's necessary for.
         self.visualizer = Snitchvis(self.snitches, self.events, self.users,
             speeds=self.speeds, start_speed=self.start_speed,
-            show_all_snitches=self.show_all_snitches, mode=self.mode)
+            show_all_snitches=self.show_all_snitches,
+            heatmap_aggregate_perc=self.heatmap_aggregate_perc, mode=self.mode)
         self.visualizer.interface.renderer.loaded_signal.connect(self.on_load)
         self.visualizer.show()
         super().exec()
@@ -359,7 +363,9 @@ MINIMUM_EVENT_FADE = 1500
 
 class SnitchVisRecord:
     def __init__(self, snitches, events, users, size, framerate, duration_rt,
-        show_all_snitches, event_fade_percentage, mode, output_file):
+        show_all_snitches, event_fade_percentage, heatmap_aggregate_perc, mode,
+        output_file
+    ):
         self.snitches = snitches
         self.events = events
         self.users = users
@@ -367,6 +373,7 @@ class SnitchVisRecord:
         # frames per second
         self.framerate = framerate
         self.show_all_snitches = show_all_snitches
+        self.heatmap_aggregate_perc = heatmap_aggregate_perc
         self.mode = mode
         self.output_file = output_file
 
@@ -414,7 +421,7 @@ class SnitchVisRecord:
     @profile
     def render(self):
         renderer = FrameRenderer(None, self.snitches, self.events, self.users,
-            self.show_all_snitches, self.mode)
+            self.show_all_snitches, self.heatmap_aggregate_perc, self.mode)
         renderer.event_fade = self.event_fade
         renderer.draw_coordinates = False
 

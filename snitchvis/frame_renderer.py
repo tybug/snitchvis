@@ -15,10 +15,17 @@ SNITCH_FIELD_COLOR = QColor(93, 183, 223)
 # actual snitch block, white
 SNITCH_BLOCK_COLOR = QColor(200, 200, 200)
 
+# white
+HEATMAP_NO_HITS_COLOR = QColor(255, 255, 255)
+# red
+HEATMAP_MAX_HITS_COLOR = QColor(237, 41, 28)
+
 GAMEPLAY_PADDING_WIDTH = 20
 GAMEPLAY_PADDING_HEIGHT = 20
 GAMEPLAY_WIDTH = 600
 GAMEPLAY_HEIGHT = 450
+
+SNITCH_FIELD_ALPHA = 0.23
 
 # min width and height of our events bounding box. GAMEPLAY_PADDING_* gets
 # applied on top of this.
@@ -67,22 +74,19 @@ class FrameRenderer:
     """
     @profile
     def __init__(self, paint_object, snitches, events, users, show_all_snitches,
-        mode="square"):
+        heatmap_aggregate_perc, mode="square"):
         super().__init__()
 
         # filter out snitches which are broken or gone. We may want to display
         # these in a different color/shape later, or have a flag to display
         # missing snitches in a fancy way.
         snitches = [s for s in snitches if not s.broken_ts and not s.gone_ts]
-
         self.event_start_td = min(event.t for event in events)
-
         self.snitches_by_loc = {(s.x, s.y, s.z): s for s in snitches}
 
         for event in events:
             # normalize all event times to the earliest event, and convert to ms
             event.t = int((event.t - self.event_start_td).total_seconds() * 1000)
-
         events = sorted(events, key = lambda event: event.t)
 
         max_t = max(e.t for e in events)
@@ -102,6 +106,77 @@ class FrameRenderer:
         # the snitch the event was located at, and line draws lines between
         # events by the same player which aren't too far apart in time.
         self.mode = mode
+
+        self.playback_start = 0
+        self.playback_end = max(event.t for event in events)
+        self.paused = False
+        self.play_direction = 1
+
+        self.paint_object = paint_object
+        self.painter = None
+        # a base frame to draw on top of. Allows us to "bake" expensive drawing
+        # operations into a single base frame and draw that frame (which is a
+        # pixmap) every time instead of lots of individual draw operations.
+        # Anything drawn to this frame should remain static over the entire
+        # duration of the visualization.
+        self.base_frame = None
+        self.drawing_base_frame = None
+        self.visible_snitches = None
+
+        # coordinate system calculations. see `update_coordinate_systems` for
+        # documentation
+        self.paint_width = None
+        self.paint_height = None
+        self.draw_width = None
+        self.draw_height = None
+        self.draw_size = None
+        self.extra_padding_x = None
+        self.extra_padding_y = None
+
+        self.previous_paint_device_width = None
+        self.previous_paint_device_height = None
+
+        world_path = resource_path("world.png")
+        os.environ['QT_IMAGEIO_MAXALLOC'] = "1000"
+        self.world_pixmap = QPixmap(world_path)
+
+        self.t = 0
+
+        self.heatmap_max_hits = None
+        self.heatmap_aggregate_time = int(self.playback_end * heatmap_aggregate_perc / 100)
+        #  1000 * 60 * 60 * 5
+        # determine the maximum number of hits ever shown on the heatmap so we
+        # can calibrate our color scale.
+        # The naive approach is to count the largest number of global hits, but
+        # if our aggregate time is small, this can be significantly higher than
+        # the max number of hits ever shown on screen at a single time.
+        # Calculating the actual max ever on screen is very expensive
+        # (potentially less so with a fancy algorithm?), so we'll estimate by
+        # calculating in chunks of beatmap_aggregate_time. This makes our
+        # estimated max hits at worst a factor of two less than the actual max
+        # hits (worst case: n hits occurs twice, right on the lower and upper
+        # boundary of a aggregate time chunk). Our estimate will never be higher
+        # than the actual max hits.
+        # This might cause alpha calculations to overflow into > 1, but qt seems
+        # to handle that gracefully (I assume just truncates to 1). So while
+        # it's not great, it should be ok.
+        # only calculate in heatmap mode to avoid any overhead. Even this
+        # estimate can get very expensive with small aggregate times!
+        if mode == "heatmap":
+            self.heatmap_max_hits = 0
+            for i in range(self.playback_end // self.heatmap_aggregate_time):
+                t_start = self.heatmap_aggregate_time * i
+                t_end = self.heatmap_aggregate_time * (i + 1)
+                hits_by_loc = defaultdict(int)
+                for event in events:
+                    if t_start <= event.t <= t_end:
+                        hits_by_loc[(event.x, event.y, event.z)] += 1
+
+                # some chunks may not have any events
+                if not hits_by_loc:
+                    continue
+                max_hit_chunk = max(hits_by_loc.values())
+                self.heatmap_max_hits = max(self.heatmap_max_hits, max_hit_chunk)
 
         # figure out a bounding box for our events.
         # if we want to show all our snitches instead of all our events, bound
@@ -138,41 +213,6 @@ class FrameRenderer:
             self.max_y += (diff / 2)
             self.min_y -= (diff / 2)
 
-        self.playback_start = 0
-        self.playback_end = max(event.t for event in events)
-        self.paused = False
-        self.play_direction = 1
-
-        self.paint_object = paint_object
-        self.painter = None
-        # a base frame to draw on top of. Allows us to "bake" expensive drawing
-        # operations into a single base frame and draw that frame (which is a
-        # pixmap) every time instead of lots of individual draw operations.
-        # Anything drawn to this frame should remain static over the entire
-        # duration of the visualization.
-        self.base_frame = None
-        self.drawing_base_frame = None
-        self.visible_snitches = None
-
-        # coordinate system calculations. see `update_coordinate_systems` for
-        # documentation
-        self.paint_width = None
-        self.paint_height = None
-        self.draw_width = None
-        self.draw_height = None
-        self.draw_size = None
-        self.extra_padding_x = None
-        self.extra_padding_y = None
-
-        self.previous_paint_device_width = None
-        self.previous_paint_device_height = None
-
-
-        world_path = resource_path("world.png")
-        os.environ['QT_IMAGEIO_MAXALLOC'] = "1000"
-        self.world_pixmap = QPixmap(world_path)
-
-        self.t = 0
 
     def update_coordinate_systems(self):
         # calculating coordinate based geometry can actually get very expensive
@@ -317,11 +357,16 @@ class FrameRenderer:
 
         # world map
         self.draw_world_map()
-        # time elapsed
+        # time elapsed, players, etc
         self.draw_info()
         # snitches
         self.draw_snitch_fields()
-        self.draw_snitch_events()
+
+        if self.mode in ["square", "line"]:
+            self.draw_snitch_events()
+        if self.mode in ["heatmap"]:
+            self.draw_heatmap()
+
         self.draw_snitch_blocks()
 
         self.painter.end()
@@ -386,30 +431,53 @@ class FrameRenderer:
         self.draw_text(x_offset, y, current_t.strftime('%m/%d/%Y %H:%M:%S'))
 
         # draw all usernames with corresponding colors
-        for user in self.users:
-            y += 16
+        if self.mode in ["square", "line"]:
+            for user in self.users:
+                y += 16
 
-            alpha = 1 if user.enabled else 0.4
-            start_x = 5
-            start_y = y - 9
-            self.draw_rectangle(start_x, start_y, start_x + 10, start_y + 10,
-                color=user.color, alpha=alpha, coords="screen")
+                alpha = 1 if user.enabled else 0.4
+                start_x = 5
+                start_y = y - 9
+                self.draw_rectangle(start_x, start_y, start_x + 10, start_y + 10,
+                    color=user.color, alpha=alpha, coords="screen")
 
-            text = user.username
-            self.draw_text(x_offset + 14, y, text, alpha=alpha)
+                text = user.username
+                self.draw_text(x_offset + 14, y, text, alpha=alpha)
 
-            # bounding rects require that we have a pen set, or else it will
-            # (correctly) return QRect(0, 0, 0, 0), as the text won't actually
-            # be visible.
-            self.painter.setPen(TEXT_COLOR)
-            info_pos = self.painter.boundingRect(5, y - 9, 0, 0, 0, text)
-            self.painter.setPen(Qt.PenStyle.NoPen)
-            rect = QRect(info_pos.x(), info_pos.y(), info_pos.width(),
-                info_pos.height())
-            # some manual adjustments, not sure why these are necessary
-            rect.setHeight(rect.height() - 3)
-            rect.setWidth(rect.width() + 17)
-            user.info_pos_rect = rect
+                # bounding rects require that we have a pen set, or else it will
+                # (correctly) return QRect(0, 0, 0, 0), as the text won't actually
+                # be visible.
+                self.painter.setPen(TEXT_COLOR)
+                info_pos = self.painter.boundingRect(5, y - 9, 0, 0, 0, text)
+                self.painter.setPen(Qt.PenStyle.NoPen)
+                rect = QRect(info_pos.x(), info_pos.y(), info_pos.width(),
+                    info_pos.height())
+                # some manual adjustments, not sure why these are necessary
+                rect.setHeight(rect.height() - 3)
+                rect.setWidth(rect.width() + 17)
+                user.info_pos_rect = rect
+
+        if self.mode in ["heatmap"]:
+            steps = 5
+            for i in reversed(range(steps + 1)):
+                y += 16
+                start_x = 5
+                start_y = y - 9
+                hits = i * (self.heatmap_max_hits / steps)
+                alpha = hits / self.heatmap_max_hits
+
+                # when people actually see heatmaps, they're drawn on top of
+                # snitch fields and the alpha blend creates a different color
+                # than if we were to just draw a heatmap field here. To match
+                # the actual colors people see, we'll draw the base snitch field
+                # and then the heatmap field on top of it.
+                self.draw_rectangle(start_x, start_y, start_x + 10,
+                    start_y + 10, color=SNITCH_FIELD_COLOR,
+                    alpha=SNITCH_FIELD_ALPHA, coords="screen")
+                self.draw_rectangle(start_x, start_y, start_x + 10,
+                    start_y + 10, color=HEATMAP_MAX_HITS_COLOR, alpha=alpha,
+                    coords="screen")
+                self.draw_text(x_offset + 14, y, f"{int(hits)}")
 
         if self.draw_coordinates:
             # draw current mouse coordinates
@@ -422,7 +490,8 @@ class FrameRenderer:
     def draw_snitch_fields(self):
         for snitch in self.visible_snitches:
             self.draw_rectangle(snitch.x - 11, snitch.y - 11, snitch.x + 12,
-                snitch.y + 12, color=SNITCH_FIELD_COLOR, alpha=0.23)
+                snitch.y + 12, color=SNITCH_FIELD_COLOR,
+                alpha=SNITCH_FIELD_ALPHA)
 
     @profile
     @draw(Draw.ALL_EXCEPT_BASE_FRAME)
@@ -469,6 +538,37 @@ class FrameRenderer:
                 self.draw_rectangle(snitch.x, snitch.y, snitch.x + 1,
                     snitch.y + 1, color=SNITCH_BLOCK_COLOR)
 
+
+    @profile
+    @draw(Draw.ALL_EXCEPT_BASE_FRAME)
+    def draw_heatmap(self):
+        # build the local hits dict at this timestamp
+        # TODO could speed up by vectorizing le/ge comparisons with numpy if
+        # necessary
+        hits_by_loc = defaultdict(int)
+        for event in self.events:
+            # the first condition here is the standard "event is within a
+            # certain time of the current time". The second condition is a bit
+            # special, and ensures that if the event happens in the first period
+            # of aggregation time, and we're still actually in that period,
+            # we'll display the hit regardless. This is because the first period
+            # of aggregation time has incomplete information, so to speak: it
+            # doesn't have knowledge of any events before the first event, but
+            # we don't want to display the misleading result of no heatmap. So
+            # we'll lie and display an identical heatmap for the first unit of
+            # aggregation time. Everything is normal afterwards.
+            if (
+                self.t - self.heatmap_aggregate_time <= event.t <= self.t or
+                (event.t <= self.heatmap_aggregate_time and self.t <= self.heatmap_aggregate_time)
+            ):
+                hits_by_loc[(event.x, event.y, event.z)] += 1
+
+        for snitch in self.visible_snitches:
+            hits = hits_by_loc[(snitch.x, snitch.y, snitch.z)]
+            alpha = hits / self.heatmap_max_hits
+            self.draw_rectangle(snitch.x - 11, snitch.y - 11, snitch.x + 12,
+                snitch.y + 12, color=HEATMAP_MAX_HITS_COLOR, alpha=alpha)
+
     @profile
     def draw_rectangle(self, start_x, start_y, end_x, end_y, *, color, alpha=1,
         coords="world"
@@ -504,3 +604,11 @@ class FrameRenderer:
         self.painter.setOpacity(alpha)
         self.painter.drawText(x, y, text)
         self.painter.setPen(pen)
+
+    @profile
+    def color_at(self, c1, c2, t):
+        # just a linear interpolation in rgb color space. t is between 0 and 1
+        r = c1.red() * (1 - t) + c2.red() * t
+        g = c1.green() * (1 - t) + c2.green() * t
+        b = c1.blue() * (1 - t) + c2.blue() * t
+        return QColor(int(r), int(g), int(b))

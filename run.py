@@ -51,6 +51,7 @@ duration = args.duration * 1000
 event_fade_percentage = args.fade
 output_file = args.output
 mode = args.mode
+heatmap_aggregate_perc = 0.2
 
 t_parse = time.time()
 
@@ -58,13 +59,16 @@ if args.record:
     # https://stackoverflow.com/q/13215120
     qapp = QApplication(['-platform', 'minimal'])
     vis = SnitchVisRecord(snitches, events, users, size, fps,
-        duration, show_all_snitches, event_fade_percentage, mode, output_file)
+        duration, show_all_snitches, event_fade_percentage,
+        heatmap_aggregate_perc, mode, output_file
+    )
     vis.render()
 else:
     vis = SnitchvisApp(snitches, events, users,
         speeds=[0.25, 0.5, 1, 2.5, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000],
         show_all_snitches=show_all_snitches,
-        mode=mode)
+        heatmap_aggregate_perc=heatmap_aggregate_perc, mode=mode
+        )
     vis.exec()
 
 
