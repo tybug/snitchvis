@@ -7,7 +7,7 @@ from argparse import ArgumentParser
 from PyQt6.QtWidgets import QApplication
 
 from snitchvis import (SnitchvisApp, SnitchVisRecord, parse_events,
-    parse_snitches, create_users, snitches_from_events)
+    parse_snitches, create_users, snitches_from_events, Config)
 
 parser = ArgumentParser()
 parser.add_argument("-a", "--all-snitches", help="show all snitches in the "
@@ -36,7 +36,7 @@ args = parser.parse_args()
 
 event_file = Path(".") / args.input
 snitch_db = Path(".") / args.snitch_db
-events = parse_events(event_file)
+events = parse_events(event_file, True)
 snitches = set(parse_snitches(snitch_db))
 # in case we have some event hits which aren't in our database
 snitches |= set(snitches_from_events(events))
@@ -51,24 +51,25 @@ duration = args.duration * 1000
 event_fade_percentage = args.fade
 output_file = args.output
 mode = args.mode
-heatmap_aggregate_perc = 0.2
+# TODO param for this
+heatmap_percentage = 20
 
 t_parse = time.time()
+
+config = Config(snitches=snitches, events=events, users=users,
+    show_all_snitches=show_all_snitches, mode=mode,
+    heatmap_percentage=heatmap_percentage)
 
 if args.record:
     # https://stackoverflow.com/q/13215120
     qapp = QApplication(['-platform', 'minimal'])
-    vis = SnitchVisRecord(snitches, events, users, size, fps,
-        duration, show_all_snitches, event_fade_percentage,
-        heatmap_aggregate_perc, mode, output_file
-    )
+    vis = SnitchVisRecord(duration, size, fps, event_fade_percentage,
+        output_file, config)
     vis.render()
 else:
-    vis = SnitchvisApp(snitches, events, users,
-        speeds=[0.25, 0.5, 1, 2.5, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000],
-        show_all_snitches=show_all_snitches,
-        heatmap_aggregate_perc=heatmap_aggregate_perc, mode=mode
-        )
+    vis = SnitchvisApp(config,
+        speeds=[0.25, 0.5, 1, 2.5, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000]
+    )
     vis.exec()
 
 

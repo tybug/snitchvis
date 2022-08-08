@@ -18,16 +18,15 @@ class Renderer(QFrame):
     pause_signal = pyqtSignal()
     loaded_signal = pyqtSignal()
 
-    def __init__(self, snitches, events, users, start_speed, show_all_snitches,
-        heatmap_aggregate_perc, mode):
+    def __init__(self, start_speed, config):
         super().__init__()
         self.setMinimumSize(GAMEPLAY_WIDTH + GAMEPLAY_PADDING_WIDTH * 2,
             GAMEPLAY_HEIGHT + GAMEPLAY_PADDING_HEIGHT * 2)
 
-        self.users = users
+        self.users = config.users
         # hash by username for convenience
         self.users_by_username = {user.username: user for user in self.users}
-        self.events = events
+        self.events = config.events
 
         self.setMouseTracking(True)
 
@@ -41,10 +40,9 @@ class Renderer(QFrame):
         # 62 fps (1000ms / 60frames but the result can only be a integer)
         self.timer.start(int(1000/60))
 
-        # let renderer normalize the events for us
-        self.renderer = FrameRenderer(self, snitches, events, users,
-            show_all_snitches, heatmap_aggregate_perc, mode)
+        self.renderer = FrameRenderer(self, config)
 
+        # let renderer normalize event times for us
         self.playback_end = max(event.t for event in self.renderer.events)
 
         # black background

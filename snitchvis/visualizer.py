@@ -183,19 +183,27 @@ def snitches_from_events(events):
         snitches.add(snitch)
     return snitches
 
+@dataclass(kw_only=True)
+class Config:
+    snitches: list[Snitch]
+    users: list[User]
+    heatmap_percentage: int = 20
+    events: list[Event]
+    show_all_snitches: bool = False
+    mode: str = "square"
+
+
 class Snitchvis(QMainWindow):
-    def __init__(self, snitches, events, users, *,
+    def __init__(self, config,
         speeds=[0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 3.0, 5.0, 10.0],
-        start_speed=1, show_all_snitches=False, heatmap_aggregate_perc=0.2,
-        mode="square"
+        start_speed=1
     ):
         super().__init__()
 
         self.setAutoFillBackground(True)
         self.setWindowTitle("SnitchVis")
 
-        self.interface = Interface(snitches, events, users, speeds, start_speed,
-            show_all_snitches, heatmap_aggregate_perc, mode)
+        self.interface = Interface(speeds, start_speed, config)
         self.interface.renderer.loaded_signal.connect(self.on_load)
         self.setCentralWidget(self.interface)
 
@@ -254,24 +262,18 @@ class SnitchvisApp(QApplication):
     """
     ``speeds`` must contain ``start_speed``.
     """
-    def __init__(self, snitches, events, users, *,
+    def __init__(self, config,
         speeds=[0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 3.0, 5.0, 10.0],
-        start_speed=1, show_all_snitches=False, heatmap_aggregate_perc=0.2,
-        mode="square"
+        start_speed=1
     ):
         super().__init__([])
         self.setStyle("Fusion")
         self.setApplicationName("Circlevis")
 
         self.visualizer = None
-        self.snitches = snitches
-        self.events = events
-        self.users = users
+        self.config = config
         self.speeds = speeds
         self.start_speed = start_speed
-        self.show_all_snitches = show_all_snitches
-        self.heatmap_aggregate_perc = heatmap_aggregate_perc
-        self.mode = mode
 
     def exec(self):
         """
@@ -282,10 +284,7 @@ class SnitchvisApp(QApplication):
         # we can't create this in ``__init__`` because we can't instantiate a
         # ``QWidget`` before a ``QApplication``, so delay until here, which is
         # all it's necessary for.
-        self.visualizer = Snitchvis(self.snitches, self.events, self.users,
-            speeds=self.speeds, start_speed=self.start_speed,
-            show_all_snitches=self.show_all_snitches,
-            heatmap_aggregate_perc=self.heatmap_aggregate_perc, mode=self.mode)
+        self.visualizer = Snitchvis(self.config, self.speeds, self.start_speed)
         self.visualizer.interface.renderer.loaded_signal.connect(self.on_load)
         self.visualizer.show()
         super().exec()
@@ -362,20 +361,14 @@ MINIMUM_VIDEO_DURATION = 500
 MINIMUM_EVENT_FADE = 1500
 
 class SnitchVisRecord:
-    def __init__(self, snitches, events, users, size, framerate, duration_rt,
-        show_all_snitches, event_fade_percentage, heatmap_aggregate_perc, mode,
-        output_file
-    ):
-        self.snitches = snitches
-        self.events = events
-        self.users = users
+    def __init__(self, duration_rt, size, fps, event_fade_percentage,
+        output_file, config):
+        # duration_rt is in ms (relative to real time)
+        self.config = config
+        self.fps = fps
         self.size = size
-        # frames per second
-        self.framerate = framerate
-        self.show_all_snitches = show_all_snitches
-        self.heatmap_aggregate_perc = heatmap_aggregate_perc
-        self.mode = mode
         self.output_file = output_file
+        events = config.events
 
         # our events cover `duration` ms (in game time), and we need to
         # compress that into `duration_rt` ms (in real time) at
@@ -383,10 +376,8 @@ class SnitchVisRecord:
         # to work with, and each frame needs to take
         # `duration / num_frames` seconds.
 
-        # duration_rt is in ms (relative to real time)
-
-        max_t = max(e.t for e in self.events)
-        min_t = min(e.t for e in self.events)
+        max_t = max(e.t for e in events)
+        min_t = min(e.t for e in events)
         # in ms (relative to game time). convert to ms from datetime
         duration = (max_t - min_t).total_seconds() * 1000
 
@@ -397,7 +388,7 @@ class SnitchVisRecord:
         duration = max(MINIMUM_VIDEO_DURATION, duration)
         duration_rt = np.clip(MINIMUM_VIDEO_DURATION, duration_rt, duration)
 
-        self.num_frames = int((duration_rt / 1000) * self.framerate)
+        self.num_frames = int((duration_rt / 1000) * self.fps)
         # in ms (relative to game time)
         self.frame_duration = duration / self.num_frames
         # in ms (relative to real time)
@@ -420,8 +411,7 @@ class SnitchVisRecord:
 
     @profile
     def render(self):
-        renderer = FrameRenderer(None, self.snitches, self.events, self.users,
-            self.show_all_snitches, self.heatmap_aggregate_perc, self.mode)
+        renderer = FrameRenderer(None, self.config)
         renderer.event_fade = self.event_fade
         renderer.draw_coordinates = False
 
@@ -447,7 +437,7 @@ class SnitchVisRecord:
             "-hide_banner",
             "-loglevel", "error",
             "-f", "image2pipe",
-            "-r", str(self.framerate),
+            "-r", str(self.fps),
             "-pix_fmt", "yuv420p",
             "-vcodec", codec,
             "-i", "-",

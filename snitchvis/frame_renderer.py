@@ -73,9 +73,14 @@ class FrameRenderer:
     object.
     """
     @profile
-    def __init__(self, paint_object, snitches, events, users, show_all_snitches,
-        heatmap_aggregate_perc, mode="square"):
+    def __init__(self, paint_object, config):
         super().__init__()
+        snitches = config.snitches
+        users = config.users
+        mode = config.mode
+        heatmap_percentage = config.heatmap_percentage
+        events = config.events
+        show_all_snitches = config.show_all_snitches
 
         # filter out snitches which are broken or gone. We may want to display
         # these in a different color/shape later, or have a flag to display
@@ -143,7 +148,7 @@ class FrameRenderer:
         self.t = 0
 
         self.heatmap_max_hits = None
-        self.heatmap_aggregate_time = int(self.playback_end * heatmap_aggregate_perc / 100)
+        self.heatmap_aggregate_time = int(self.playback_end * heatmap_percentage / 100)
         #  1000 * 60 * 60 * 5
         # determine the maximum number of hits ever shown on the heatmap so we
         # can calibrate our color scale.
