@@ -1,9 +1,9 @@
 from snitchvis.visualizer import (Snitchvis, SnitchvisApp, parse_events,
     parse_snitches, SnitchVisRecord, create_users, Event,
-    InvalidEventException, snitches_from_events, Snitch, Config)
+    InvalidEventException, snitches_from_events, Snitch, Config, SnitchVisImage)
 
 __all__ = [
     "Snitchvis", "SnitchvisApp", "SnitchVisRecord", "parse_events",
     "parse_snitches", "create_users", "Event", "InvalidEventException",
-    "snitches_from_events", "Snitch", "Config"
+    "snitches_from_events", "Snitch", "Config", "SnitchVisImage"
 ]

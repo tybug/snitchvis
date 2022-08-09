@@ -472,3 +472,20 @@ class SnitchVisRecord:
             p.wait()
 
         print("done rendering")
+
+# render a single image to disk, instead of a video
+class SnitchVisImage:
+    def __init__(self, output_file, config):
+        self.output_file = output_file
+        self.config = config
+
+    def render(self):
+        image = QImage(1000, 1000, QImage.Format.Format_RGB32)
+        image.fill(Qt.GlobalColor.black)
+
+        renderer = FrameRenderer(image, self.config, draw_time_span=False)
+        renderer.draw_coordinates = False
+        renderer.t = renderer.playback_end
+        renderer.render()
+
+        image.save(self.output_file, "jpeg", quality=100)
