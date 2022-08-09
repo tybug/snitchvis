@@ -411,7 +411,8 @@ class SnitchVisRecord:
         padding_t = min(0.1 * duration_rt, 1000)
         self.num_frames += int(padding_t / self.frame_duration_rt)
 
-        # update config with our event fade (defaults to 5 in-game minutes)
+        # update config with our event fade (defaults to 5 in-game minutes
+        # otherwise)
         self.config.event_fade = event_fade
 
     @profile
