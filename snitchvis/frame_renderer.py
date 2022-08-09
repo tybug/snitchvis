@@ -75,9 +75,15 @@ class FrameRenderer:
     @profile
     def __init__(self, paint_object, config):
         super().__init__()
+        # how to visualize events. One of "square" or "line". square highlights
+        # the snitch the event was located at, and line draws lines between
+        # events by the same player which aren't too far apart in time.
+        self.mode = config.mode
+        self.heatmap_scale = config.heatmap_scale
+        self.heatmap_scale = "weighted"
+
         snitches = config.snitches
         users = config.users
-        mode = config.mode
         heatmap_percentage = config.heatmap_percentage
         events = config.events
         show_all_snitches = config.show_all_snitches
@@ -107,11 +113,6 @@ class FrameRenderer:
         # 5 minutes, in ms (relative to game time)
         self.event_fade = 5 * 60 * 1000
         self.draw_coordinates = True
-        # how to visualize events. One of "square" or "line". square highlights
-        # the snitch the event was located at, and line draws lines between
-        # events by the same player which aren't too far apart in time.
-        self.mode = mode
-
         self.playback_start = 0
         self.playback_end = max(event.t for event in events)
         self.paused = False
@@ -149,7 +150,6 @@ class FrameRenderer:
 
         self.heatmap_max_hits = None
         self.heatmap_aggregate_time = int(self.playback_end * heatmap_percentage / 100)
-        #  1000 * 60 * 60 * 5
         # determine the maximum number of hits ever shown on the heatmap so we
         # can calibrate our color scale.
         # The naive approach is to count the largest number of global hits, but
@@ -167,7 +167,7 @@ class FrameRenderer:
         # it's not great, it should be ok.
         # only calculate in heatmap mode to avoid any overhead. Even this
         # estimate can get very expensive with small aggregate times!
-        if mode == "heatmap":
+        if self.mode == "heatmap":
             self.heatmap_max_hits = 0
             for i in range(self.playback_end // self.heatmap_aggregate_time):
                 t_start = self.heatmap_aggregate_time * i
@@ -182,6 +182,16 @@ class FrameRenderer:
                     continue
                 max_hit_chunk = max(hits_by_loc.values())
                 self.heatmap_max_hits = max(self.heatmap_max_hits, max_hit_chunk)
+
+            # desmos link: https://www.desmos.com/calculator/ypxartrflj
+            # x is hits, y is opacity, n is self.beatmap_max_hits, beta is a
+            # parameter controlling the steepness of the easing, and alpha is
+            # solved in terms of beta and n to have the curve pass through
+            # (n, 1) - ie, a snitch with the maximum number of hits has an
+            # opacity of 1.
+            self.heatmap_beta = 0.4
+            # unfortunate naming collision with desmos alpha and opacity alpha
+            self.heatmap_alpha_ = 1 / (self.heatmap_max_hits ** self.heatmap_beta)
 
         # figure out a bounding box for our events.
         # if we want to show all our snitches instead of all our events, bound
@@ -469,7 +479,7 @@ class FrameRenderer:
                 start_x = 5
                 start_y = y - 9
                 hits = i * (self.heatmap_max_hits / steps)
-                alpha = hits / self.heatmap_max_hits
+                alpha = self.heatmap_alpha(hits)
 
                 # when people actually see heatmaps, they're drawn on top of
                 # snitch fields and the alpha blend creates a different color
@@ -570,7 +580,7 @@ class FrameRenderer:
 
         for snitch in self.visible_snitches:
             hits = hits_by_loc[(snitch.x, snitch.y, snitch.z)]
-            alpha = hits / self.heatmap_max_hits
+            alpha = self.heatmap_alpha(hits)
             self.draw_rectangle(snitch.x - 11, snitch.y - 11, snitch.x + 12,
                 snitch.y + 12, color=HEATMAP_MAX_HITS_COLOR, alpha=alpha)
 
@@ -617,3 +627,16 @@ class FrameRenderer:
         g = c1.green() * (1 - t) + c2.green() * t
         b = c1.blue() * (1 - t) + c2.blue() * t
         return QColor(int(r), int(g), int(b))
+
+    @profile
+    def heatmap_alpha(self, hits):
+        if self.heatmap_scale == "linear":
+            return hits / self.heatmap_max_hits
+        if self.heatmap_scale == "weighted":
+            # desmos link: https://www.desmos.com/calculator/ypxartrflj
+            # x is hits, y is opacity, n is self.beatmap_max_hits, beta is a
+            # parameter controlling the steepness of the easing, and alpha is
+            # solved in terms of beta and n to have the curve pass through
+            # (n, 1) - ie, a snitch with the maximum number of hits has an
+            # opacity of 1.
+            return self.heatmap_alpha_ * (hits ** self.heatmap_beta)

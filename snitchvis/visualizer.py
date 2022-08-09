@@ -187,11 +187,11 @@ def snitches_from_events(events):
 class Config:
     snitches: list[Snitch]
     users: list[User]
-    heatmap_percentage: int = 20
     events: list[Event]
     show_all_snitches: bool = False
     mode: str = "square"
-
+    heatmap_percentage: int = 20
+    heatmap_scale: str = "linear"
 
 class Snitchvis(QMainWindow):
     def __init__(self, config,
