@@ -73,13 +73,14 @@ class FrameRenderer:
     object.
     """
     @profile
-    def __init__(self, paint_object, config):
+    def __init__(self, paint_object, config, *, draw_time_span=True):
         super().__init__()
         # how to visualize events. One of "square" or "line". square highlights
         # the snitch the event was located at, and line draws lines between
         # events by the same player which aren't too far apart in time.
         self.mode = config.mode
         self.heatmap_scale = config.heatmap_scale
+        self.draw_time_span = draw_time_span
 
         snitches = config.snitches
         users = config.users
@@ -91,16 +92,19 @@ class FrameRenderer:
         # these in a different color/shape later, or have a flag to display
         # missing snitches in a fancy way.
         snitches = [s for s in snitches if not s.broken_ts and not s.gone_ts]
-        self.event_start_td = min(event.t for event in events)
+
         self.snitches_by_loc = {(s.x, s.y, s.z): s for s in snitches}
 
-        for event in events:
-            # normalize all event times to the earliest event, and convert to ms
-            event.t = int((event.t - self.event_start_td).total_seconds() * 1000)
-        events = sorted(events, key = lambda event: event.t)
+        if draw_time_span or events:
+            self.event_start_td = min(event.t for event in events)
+            for event in events:
+                # normalize all event times to the earliest event, and convert to ms
+                event.t = int((event.t - self.event_start_td).total_seconds() * 1000)
+            events = sorted(events, key = lambda event: event.t)
 
-        max_t = max(e.t for e in events)
-        self.event_end_td = self.event_start_td + timedelta(milliseconds=max_t)
+            max_t = max(e.t for e in events)
+            self.event_end_td = self.event_start_td + timedelta(milliseconds=max_t)
+
         self.users = users
         # hash by username for convenience
         self.users_by_username = {user.username: user for user in self.users}
@@ -113,7 +117,7 @@ class FrameRenderer:
         self.event_fade = config.event_fade
         self.draw_coordinates = True
         self.playback_start = 0
-        self.playback_end = max(event.t for event in events)
+        self.playback_end = max(event.t for event in events) if events else 0
         # force playback to last for at least 100 ms to avoid weird divide by
         # zero errors when there's only a single event
         self.playback_end = max(self.playback_end, 100)
@@ -198,12 +202,28 @@ class FrameRenderer:
         # figure out a bounding box for our events.
         # if we want to show all our snitches instead of all our events, bound
         # to the snitches instead.
-        bounding_events = self.snitches if show_all_snitches else self.events
+        # If we don't have any events, use our snitches to bound instead.
+        if show_all_snitches:
+            bounding_events = self.snitches
+        if not self.events:
+            bounding_events = self.snitches
+        else:
+            bounding_events = self.events
+
         # first, we'll find the extremities of the events.
-        self.max_x = max(e.x for e in bounding_events)
-        self.min_x = min(e.x for e in bounding_events)
-        self.max_y = max(e.y for e in bounding_events)
-        self.min_y = min(e.y for e in bounding_events)
+        if bounding_events:
+            self.max_x = max(e.x for e in bounding_events)
+            self.min_x = min(e.x for e in bounding_events)
+            self.max_y = max(e.y for e in bounding_events)
+            self.min_y = min(e.y for e in bounding_events)
+        else:
+            # if we don't have any events OR snitches, just bound to the entire
+            # 10k radius map.
+            self.max_x = 10_000
+            self.min_x = -10_000
+            self.max_y = 10_000
+            self.min_y = -10_000
+
         # this is almost certainly a rectangle, so we'll pad it out to be a
         # square, adding padding along the shorter axis.
         x_dist = self.max_x - self.min_x
@@ -431,21 +451,22 @@ class FrameRenderer:
         # x offset from edge of screen
         x_offset = 5
 
-        start = self.event_start_td.strftime('%m/%d/%Y %H:%M')
-        # if the snitch log only covers a single day, don't show mm/dd/yyyy
-        # twice
-        if self.event_start_td.date() == self.event_end_td.date():
-            end = self.event_end_td.strftime('%H:%M')
-        # different days, show full date for each
-        else:
-            end = self.event_end_td.strftime('%m/%d/%Y %H:%M')
-        self.draw_text(x_offset, y, f"Snitch Log {start} - {end}")
+        if self.draw_time_span:
+            start = self.event_start_td.strftime('%m/%d/%Y %H:%M')
+            # if the snitch log only covers a single day, don't show mm/dd/yyyy
+            # twice
+            if self.event_start_td.date() == self.event_end_td.date():
+                end = self.event_end_td.strftime('%H:%M')
+            # different days, show full date for each
+            else:
+                end = self.event_end_td.strftime('%m/%d/%Y %H:%M')
+            self.draw_text(x_offset, y, f"Snitch Log {start} - {end}")
 
-        # draw current time
-        y += 18
-        timedelta_in = timedelta(milliseconds=self.t)
-        current_t = self.event_start_td + timedelta_in
-        self.draw_text(x_offset, y, current_t.strftime('%m/%d/%Y %H:%M:%S'))
+            # draw current time
+            y += 18
+            timedelta_in = timedelta(milliseconds=self.t)
+            current_t = self.event_start_td + timedelta_in
+            self.draw_text(x_offset, y, current_t.strftime('%m/%d/%Y %H:%M:%S'))
 
         # draw all usernames with corresponding colors
         if self.mode in ["square", "line"]:
