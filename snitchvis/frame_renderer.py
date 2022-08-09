@@ -80,7 +80,6 @@ class FrameRenderer:
         # events by the same player which aren't too far apart in time.
         self.mode = config.mode
         self.heatmap_scale = config.heatmap_scale
-        self.heatmap_scale = "weighted"
 
         snitches = config.snitches
         users = config.users
