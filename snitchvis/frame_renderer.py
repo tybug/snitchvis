@@ -114,6 +114,9 @@ class FrameRenderer:
         self.draw_coordinates = True
         self.playback_start = 0
         self.playback_end = max(event.t for event in events)
+        # force playback to last for at least 100 ms to avoid weird divide by
+        # zero errors when there's only a single event
+        self.playback_end = max(self.playback_end, 100)
         self.paused = False
         self.play_direction = 1
 
