@@ -192,6 +192,8 @@ class Config:
     mode: str = "square"
     heatmap_percentage: int = 20
     heatmap_scale: str = "linear"
+    # in ms, relative to in game time
+    event_fade: int = 5 * 60 * 1000
 
 class Snitchvis(QMainWindow):
     def __init__(self, config,
@@ -394,12 +396,12 @@ class SnitchVisRecord:
         # in ms (relative to real time)
         self.frame_duration_rt = duration_rt / self.num_frames
         # in ms (relative to game time)
-        self.event_fade = duration * (event_fade_percentage / 100)
+        event_fade = duration * (event_fade_percentage / 100)
         # event fade can't be smaller than MINIMUM_EVENT_FADE
         # convert real time (units of MINIMUM_EVENT_FADE) to in game time
         # (units of event_fade)
         min_event_fade_gametime = MINIMUM_EVENT_FADE * (duration / duration_rt)
-        self.event_fade = max(self.event_fade, min_event_fade_gametime)
+        event_fade = max(event_fade, min_event_fade_gametime)
 
         # we want to add a little bit of padding farmes beyond when the last
         # frame occurs, so that the last event doesn't appear to get cut off.
@@ -409,10 +411,12 @@ class SnitchVisRecord:
         padding_t = min(0.1 * duration_rt, 1000)
         self.num_frames += int(padding_t / self.frame_duration_rt)
 
+        # update config with our event fade (defaults to 5 in-game minutes)
+        self.config.event_fade = event_fade
+
     @profile
     def render(self):
         renderer = FrameRenderer(None, self.config)
-        renderer.event_fade = self.event_fade
         renderer.draw_coordinates = False
 
         image = QImage(self.size, self.size, QImage.Format.Format_RGB32)
