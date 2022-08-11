@@ -194,6 +194,9 @@ class Config:
     heatmap_scale: str = "linear"
     # in ms, relative to in game time
     event_fade: int = 5 * 60 * 1000
+    # list of exactly four elements: [x1, y1, x2, y2]. Specifies the bounds of
+    # the viewport and overrides automatic bounds calculation.
+    bounds: list[int] = None
 
 class Snitchvis(QMainWindow):
     def __init__(self, config,

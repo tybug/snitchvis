@@ -210,8 +210,13 @@ class FrameRenderer:
         else:
             bounding_events = self.events
 
-        # first, we'll find the extremities of the events.
-        if bounding_events:
+        # config bounds override everything else
+        if config.bounds:
+            self.min_x = config.bounds[0]
+            self.min_y = config.bounds[1]
+            self.max_x = config.bounds[2]
+            self.max_y = config.bounds[3]
+        elif bounding_events:
             self.max_x = max(e.x for e in bounding_events)
             self.min_x = min(e.x for e in bounding_events)
             self.max_y = max(e.y for e in bounding_events)
