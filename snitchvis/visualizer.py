@@ -31,47 +31,115 @@ class Event:
     z: int
     t: datetime
 
-    pattern_raw = (
-        r"`\[(.*?)\]` `\[(.*?)\]` \*\*(\w*?)\*\* (?:is|logged out|logged in) "
-        "at (.*?) \((.*?),(.*?),(.*?)\)"
-    )
-
-    pattern_display = (
-        r"\[(.*?)\] \[(.*?)\] (\w*?) (?:is|logged out|logged in) at (.*?) "
-        "\((.*?),(.*?),(.*?)\)"
+    # substitutions from https://github.com/HubSpot/jinjava/blob/28b13206
+    # be9bfc5ef8ba96a5faff471c7f388dd8/src/main/java/com/hubspot/jinjava/
+    # objects/date/StrftimeFormatter.java
+    MAPPING = {
+        "EEE": "a",
+        "EEEE": "A",
+        "MMM": "b",
+        "MMMM": "B",
+        "EEE MMM dd HH:mm:ss yyyy": "c",
+        "dd": "d",
+        "d": "e",
+        "SSSSSS": "f",
+        "HH": "H",
+        "hh": "I",
+        "DDD": "j",
+        "H": "k",
+        "h": "l",
+        "MM": "m",
+        "mm": "M",
+        "a": "p",
+        "ss": "S",
+        "ww": "U",
+        "e": "w",
+        "MM/dd/yy": "x",
+        "HH:mm:ss": "X",
+        "yy": "y",
+        "yyyy": "Y",
+        "Z": "z",
+        "z": "Z"
+    }
+    # adapted from https://stackoverflow.com/a/15448887. Could probably be
+    # made more readable (is the len sort really necessary?)
+    MAPPING_PATTERN = re.compile(
+        "|".join(
+            [re.escape(k) for k in sorted(MAPPING, key=len, reverse=True)]
+        )
     )
 
     @classmethod
-    def parse(cls, raw_event, markdown=True):
-        if "is at" in raw_event:
+    def parse(cls, raw_event, snitch_f, enter_f, login_f, logout_f, time_f):
+        if enter_f in raw_event:
             EventClass = Ping
-        elif "logged out" in raw_event:
+        elif logout_f in raw_event:
             EventClass = Logout
-        elif "logged in" in raw_event:
+        elif login_f in raw_event:
             EventClass = Login
         else:
-            raise InvalidEventException()
+            raise InvalidEventException("Could not determine event type")
 
-        pattern = cls.pattern_raw if markdown else cls.pattern_display
+        pattern = re.escape(snitch_f)
+        # replace formats with named groups, as groups could appear in any order
+        # (or any number of times) in the input string
+        pattern = pattern.replace("%TIME%", "(?P<time>.*)")
+        pattern = pattern.replace("%GROUP%", "(?P<group>.*)")
+        pattern = pattern.replace("%PLAYER%", "(?P<username>.*)")
+        pattern = pattern.replace("%ACTION%", "(?P<action>.*)")
+        pattern = pattern.replace("%SNITCH%", "(?P<snitch_name>.*)")
+        pattern = pattern.replace("%X%", "(?P<x>.*)")
+        pattern = pattern.replace("%Y%", "(?P<y>.*)")
+        pattern = pattern.replace("%Z%", "(?P<z>.*)")
+
+        # ping is annoying to handle, for a combination of two reasons:
+        #
+        # * discord strips trailing whitespace
+        # * ping is optional, proceeded by a space in the default config (but
+        #   not necessarily in all configs) and is at the end of the string in
+        #   the default config (but not necessarily all configs)
+        #
+        # We'll handle this with a special case - if %PING% is at the end of the
+        # string *and* is preceeded by a space, we'll return a regex which makes
+        # the space optional. Otherwise we'll return the normal regex.
+        # I'm not confident this covers 100% of cases, and in fact I highly
+        # doubt it covers the case of multiple %PING% formats in a single
+        # message. But that is an edge case of an edge case, so I don't care to
+        # handle it right now.
+
+        if pattern.endswith(" %PING%"):
+            pattern = pattern.replace("\\ %PING%", "\w*(?P<ping>.*)")
+        else:
+            pattern = pattern.replace("%PING%", "(?P<ping>.*)")
         result = re.match(pattern, raw_event)
+
         if not result:
             raise InvalidEventException()
-        time_str, nl_group, username, snitch_name, x, y, z = result.groups()
-        x = int(x)
-        y = int(y)
-        z = int(z)
-        # try both date formats, TODO make this cleaner (less nesting)
+
+        time_str = result.group("time")
+        nl_group = result.group("group")
+        username = result.group("username")
+        snitch_name = result.group("snitch_name")
+        x = int(result.group("x"))
+        y = int(result.group("y"))
+        z = int(result.group("z"))
+
+        time_f = cls.java_strftime_to_python(time_f)
+
         try:
-            time = datetime.strptime(time_str, "%H:%M:%S")
+            time = datetime.strptime(time_str, time_f)
         except:
-            try:
-                time = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
-            except:
-                raise InvalidEventException()
+            raise InvalidEventException()
 
         # minecraft uses y as height, to preserve my sanity we're going to swap
         # and use z as height
         return EventClass(username, snitch_name, nl_group, x, z, y, time)
+
+    @classmethod
+    def java_strftime_to_python(cls, time_format):
+        return cls.MAPPING_PATTERN.sub(
+            lambda match: "%" + cls.MAPPING[match.group(0)], time_format
+        )
 
 @dataclass
 class Snitch:
@@ -137,7 +205,7 @@ class User:
     def __eq__(self, other):
         return self.username == other.username
 
-def parse_events(path, markdown=False):
+def parse_events(path):
     events = []
 
     with open(path, encoding="utf8") as f:
@@ -145,7 +213,8 @@ def parse_events(path, markdown=False):
 
     for raw_event in raw_events:
         try:
-            event = Event.parse(raw_event, markdown=markdown)
+            # TODO update to new parameters, will need to fake our own format
+            event = Event.parse(raw_event)
         # just ignore invalid events to facilitate copy+pasting of discord logs
         except InvalidEventException:
             continue
