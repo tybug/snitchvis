@@ -432,11 +432,10 @@ class SnitchvisApp(QApplication):
 # in ms (relative to real time), shortest possible video length
 MINIMUM_VIDEO_DURATION = 500
 # in ms (relative to real time)
-MINIMUM_EVENT_FADE = 1500
+MINIMUM_EVENT_FADE = 500
 
 class SnitchVisRecord:
-    def __init__(self, duration_rt, size, fps, event_fade_percentage,
-        output_file, config):
+    def __init__(self, duration_rt, size, fps, event_fade, output_file, config):
         # duration_rt is in ms (relative to real time)
         self.config = config
         self.fps = fps
@@ -467,13 +466,11 @@ class SnitchVisRecord:
         self.frame_duration = duration / self.num_frames
         # in ms (relative to real time)
         self.frame_duration_rt = duration_rt / self.num_frames
-        # in ms (relative to game time)
-        event_fade = duration * (event_fade_percentage / 100)
-        # event fade can't be smaller than MINIMUM_EVENT_FADE
-        # convert real time (units of MINIMUM_EVENT_FADE) to in game time
-        # (units of event_fade)
-        min_event_fade_gametime = MINIMUM_EVENT_FADE * (duration / duration_rt)
-        event_fade = max(event_fade, min_event_fade_gametime)
+        # in ms (relative to real time)
+        # can't be smaller than MINIMUM_EVENT_FADE
+        event_fade = max(event_fade, MINIMUM_EVENT_FADE)
+        # convert to in-game time
+        event_fade *= (duration / duration_rt)
 
         # we want to add a little bit of padding farmes beyond when the last
         # frame occurs, so that the last event doesn't appear to get cut off.
