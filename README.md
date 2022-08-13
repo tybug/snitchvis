@@ -8,7 +8,13 @@ Used by [SnitchVisBot](https://github.com/tybug/snitchvisbot) to render snitches
 
 ## Installation
 
-To install:
+I make changes to this repository so often that I don't keep up with pypi updates as well as I should, so I recommend you install from github:
+
+```
+pip install https://github.com/tybug/snitchvis
+```
+
+However, there is also a pypi package:
 
 ```
 pip install snitchvis
