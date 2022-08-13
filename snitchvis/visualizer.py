@@ -261,8 +261,8 @@ class Config:
     mode: str = "box"
     heatmap_percentage: int = 20
     heatmap_scale: str = "linear"
-    # in ms, relative to in game time
-    event_fade: int = 5 * 60 * 1000
+    # in ms, relative to real time
+    event_fade: int = 1500
     # list of exactly four elements: [x1, y1, x2, y2]. Specifies the bounds of
     # the viewport and overrides automatic bounds calculation.
     bounds: list[int] = None
