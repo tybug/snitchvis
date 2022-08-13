@@ -71,8 +71,3 @@ else:
         speeds=[0.25, 0.5, 1, 2.5, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000]
     )
     vis.exec()
-
-
-# TODO handle overlapping events on the same snitch
-# TODO pad the first event like we did the last event? less of a concern but
-# will probably make it look nicer due to seeing the fade in
