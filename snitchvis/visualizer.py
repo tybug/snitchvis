@@ -258,7 +258,7 @@ class Config:
     users: list[User]
     events: list[Event]
     show_all_snitches: bool = False
-    mode: str = "square"
+    mode: str = "box"
     heatmap_percentage: int = 20
     heatmap_scale: str = "linear"
     # in ms, relative to in game time

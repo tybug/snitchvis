@@ -75,7 +75,7 @@ class FrameRenderer:
     @profile
     def __init__(self, paint_object, config, *, draw_time_span=True):
         super().__init__()
-        # how to visualize events. One of "square" or "line". square highlights
+        # how to visualize events. One of box/line/heatmap. box highlights
         # the snitch the event was located at, and line draws lines between
         # events by the same player which aren't too far apart in time.
         self.mode = config.mode
@@ -404,7 +404,7 @@ class FrameRenderer:
         # snitches
         self.draw_snitch_fields()
 
-        if self.mode in ["square", "line"]:
+        if self.mode in ["box", "line"]:
             self.draw_snitch_events()
         if self.mode in ["heatmap"]:
             self.draw_heatmap()
@@ -474,7 +474,7 @@ class FrameRenderer:
             self.draw_text(x_offset, y, current_t.strftime('%m/%d/%Y %H:%M:%S'))
 
         # draw all usernames with corresponding colors
-        if self.mode in ["square", "line"]:
+        if self.mode in ["box", "line"]:
             for user in self.users:
                 y += 16
 

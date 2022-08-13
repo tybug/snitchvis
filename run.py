@@ -31,7 +31,7 @@ parser.add_argument("--fade", help="what percentage of the video snitch pings "
 parser.add_argument("-o", "--output", help="filename to output to",
     default="out.mp4")
 parser.add_argument("-m", "--mode", help="what mode to render in. One of "
-    "square, line, heatmap. Defaults to square", default="square")
+    "box, line, heatmap. Defaults to box", default="box")
 args = parser.parse_args()
 
 event_file = Path(".") / args.input
