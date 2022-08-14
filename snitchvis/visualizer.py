@@ -545,6 +545,8 @@ class SnitchVisRecord:
 # render a single image to disk, instead of a video
 class SnitchVisImage:
     def __init__(self, output_file, config):
+        # 10 in game minutes
+        config.event_fade = 10 * 60 * 1000
         self.output_file = output_file
         self.config = config
 
