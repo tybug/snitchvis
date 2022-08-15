@@ -205,7 +205,7 @@ class FrameRenderer:
         # If we don't have any events, use our snitches to bound instead.
         if show_all_snitches:
             bounding_events = self.snitches
-        if not self.events:
+        elif not self.events:
             bounding_events = self.snitches
         else:
             bounding_events = self.events
