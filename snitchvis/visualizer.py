@@ -549,6 +549,7 @@ class SnitchVisImage:
         config.event_fade = 10 * 60 * 1000
         self.output_file = output_file
         self.config = config
+        self.min_t = min(event.t for event in config.events)
 
     def render(self):
         image = QImage(1000, 1000, QImage.Format.Format_RGB32)
@@ -556,7 +557,14 @@ class SnitchVisImage:
 
         renderer = FrameRenderer(image, self.config, draw_time_span=False)
         renderer.draw_coordinates = False
-        renderer.t = renderer.playback_end
+
+        # set the renderer time properly so the event actually fades out.
+        # We want to set the renderer time an equivalent time in the future to
+        # how far past the first event we are. If we're rendering 10 minutes
+        # past the first event, we want to set t to 10 minutes past the first
+        # event. If we're rendering right at the first event, we want to set t
+        # to 0.
+        renderer.t = (datetime.utcnow() - self.min_t).total_seconds() * 1000
         renderer.render()
 
         image.save(self.output_file, "jpeg", quality=100)
