@@ -390,9 +390,8 @@ class FrameRenderer:
             self.update_coordinate_systems()
             self.update_visible_snitches()
 
-        if self.base_frame:
-            self.painter.drawImage(0, 0, self.base_frame)
-
+        # base frame
+        self.draw_base_frame()
         # world map
         self.draw_world_map()
         # time elapsed, players, etc
@@ -411,6 +410,15 @@ class FrameRenderer:
 
         self.previous_paint_device_width = current_pd_w
         self.previous_paint_device_height = current_pd_h
+
+    @profile
+    # we don't want to double up on the base frames if we try to draw a base
+    # frame while already having a base frame stored.
+    @draw(Draw.ALL_EXCEPT_BASE_FRAME)
+    def draw_base_frame(self):
+        if not self.base_frame:
+            return
+        self.painter.drawImage(0, 0, self.base_frame)
 
     @profile
     @draw(Draw.ONLY_BASE_FRAME)
