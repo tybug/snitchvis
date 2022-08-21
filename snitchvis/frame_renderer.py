@@ -48,7 +48,7 @@ def draw(draw_mode):
         def wrapper(self, *args, **kwargs):
             nonlocal draw_mode
             # if we're not using a base frame at all, then just draw everything
-            # every frame (this is what the non-recording visualizer does)
+            # every frame
             if self.base_frame is None and not self.drawing_base_frame:
                 draw_mode = Draw.ALL
 

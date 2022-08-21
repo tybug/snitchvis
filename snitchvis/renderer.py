@@ -1,6 +1,5 @@
-
 import numpy as np
-from PyQt6.QtGui import QPalette, QCursor
+from PyQt6.QtGui import QPalette, QCursor, QImage
 from PyQt6.QtWidgets import QFrame
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 
@@ -41,6 +40,7 @@ class Renderer(QFrame):
         self.timer.start(int(1000/60))
 
         self.renderer = FrameRenderer(self, config)
+        self.new_base_frame()
 
         # let renderer normalize event times for us
         self.playback_end = max(event.t for event in self.renderer.events)
@@ -56,6 +56,22 @@ class Renderer(QFrame):
         self.setPalette(pal)
 
         self.next_frame()
+
+    def new_base_frame(self):
+        image = QImage(self.width(), self.height(), QImage.Format.Format_RGB32)
+        image.fill(Qt.GlobalColor.black)
+
+        paint_object = self.renderer.paint_object
+
+        # reuse this renderer to draw the base frame on a new paint object, so
+        # we don't have to pay the setup cost of initializing another renderer
+        # just for a new base frame.
+        self.renderer.paint_object = image
+        self.renderer.render(drawing_base_frame=True)
+        self.renderer.base_frame = image
+
+        # restore previous paint object
+        self.renderer.paint_object = paint_object
 
     def next_frame_from_timer(self):
         """
@@ -177,3 +193,10 @@ class Renderer(QFrame):
         self.renderer.paint_object = self
         self.renderer.t = int(self.clock.get_time())
         self.renderer.render()
+
+    def resizeEvent(self, _event):
+        # TODO probably want to add some debounce here so we only calculate a
+        # new frame when we stop dragging the resize. Rendering a new base frame
+        # can be extremely expensive (200ms) if a large portion of the map is
+        # covered.
+        self.new_base_frame()
