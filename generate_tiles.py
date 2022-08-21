@@ -37,3 +37,15 @@ print("cropping to 400x400 tiles")
 os.system('magick final.png -crop 400x400 -set filename:tile '
     '"%[fx:page.x/400-25]_%[fx:page.y/400-25]" +repage +adjoin '
     '"%[filename:tile].png"')
+
+# remove large images so we don't spent a ton of time on them with pngcrush
+print("removing combined.png and final.png")
+os.system("rm combined.png")
+os.system("rm final.png")
+
+print("crushing files with pngcrush")
+# could add -brute here if we wanted the absolute best compression, but it takes
+# 50 times as long and doesn't seem to result in any noticeable compression
+# gains.
+# on average we cut filesize in half with pngcrush
+os.system('for file in *.png; do pngcrush -ow ./"$file"; done')
