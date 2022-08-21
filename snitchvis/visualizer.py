@@ -205,7 +205,10 @@ class User:
     def __eq__(self, other):
         return self.username == other.username
 
-def parse_events(path):
+def parse_events(path, snitch="`[%TIME%]` `[%GROUP%]` **%PLAYER%** %ACTION% "
+    "at %SNITCH% (%X%,%Y%,%Z%) %PING%", enter="is", login="logged in",
+    logout="logged out", time="HH:mm:ss"
+):
     events = []
 
     with open(path, encoding="utf8") as f:
@@ -213,8 +216,7 @@ def parse_events(path):
 
     for raw_event in raw_events:
         try:
-            # TODO update to new parameters, will need to fake our own format
-            event = Event.parse(raw_event)
+            event = Event.parse(raw_event, snitch, enter, login, logout, time)
         # just ignore invalid events to facilitate copy+pasting of discord logs
         except InvalidEventException:
             continue

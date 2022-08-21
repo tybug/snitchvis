@@ -36,7 +36,7 @@ args = parser.parse_args()
 
 event_file = Path(".") / args.input
 snitch_db = Path(".") / args.snitch_db
-events = parse_events(event_file, True)
+events = parse_events(event_file)
 snitches = set(parse_snitches(snitch_db))
 # in case we have some event hits which aren't in our database
 snitches |= set(snitches_from_events(events))
