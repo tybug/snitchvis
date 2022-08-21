@@ -551,7 +551,17 @@ class SnitchVisImage:
         config.event_fade = 10 * 60 * 1000
         self.output_file = output_file
         self.config = config
-        self.min_t = min(event.t for event in config.events)
+        # sometimes we don't want to visualize any events. In this case, it
+        # doesn't actually matter what we set min_t to; the same result will be
+        # rendered. We just want to avoid an exception when taking the min of an
+        # empty collection.
+        if config.events:
+            self.min_t = min(event.t for event in config.events)
+        else:
+            # self.min_t = 0 would work too, but let's try and keep the renderer
+            # time close to zero. has less of a chance of breaking things or
+            # causing performance issues in the future
+            self.min_t = datetime.utcnow()
 
     def render(self):
         image = QImage(1000, 1000, QImage.Format.Format_RGB32)
