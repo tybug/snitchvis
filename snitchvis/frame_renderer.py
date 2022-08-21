@@ -1,5 +1,5 @@
 from datetime import timedelta
-import os
+from pathlib import Path
 from enum import Enum, auto
 from collections import defaultdict
 
@@ -147,10 +147,6 @@ class FrameRenderer:
 
         self.previous_paint_device_width = None
         self.previous_paint_device_height = None
-
-        world_path = resource_path("world.png")
-        os.environ['QT_IMAGEIO_MAXALLOC'] = "1000"
-        self.world_pixmap = QPixmap(world_path)
 
         self.t = 0
 
@@ -424,27 +420,62 @@ class FrameRenderer:
         world_max_x = self.world_x(self.paint_width)
         world_max_y = self.world_y(self.paint_height)
 
-        # 0,0 is actually 10000,10000 in picture coordinates, so offset to
-        # adjust.
-        # world pixmap is also 2:1, so divide all coords by 2 to match.
         # TODO round up or down? might be an off by one error here
-        world_min_x = int((world_min_x + 10000) / 2)
-        world_min_y = int((world_min_y + 10000) / 2)
-        world_max_x = int((world_max_x + 10000) / 2)
-        world_max_y = int((world_max_y + 10000) / 2)
+        # Find all the tiles which contain any block of our world viewport.
+        # tiles are 400x400.
+        # qt expects int types, so we need to downcast our floats (which are
+        # already integer-valued) to ints
+        tile_min_x = int(world_min_x // 400)
+        tile_max_x = int(world_max_x // 400)
+        tile_min_y = int(world_min_y // 400)
+        tile_max_y = int(world_max_y // 400)
 
-        # TODO what happens when world coords are negative? `copy` will silently
-        # truncate/cap to 0, and we'll get a stretched image... ideally we'd
-        # pad with black, but calculationss might be complicated.
+        world_pixmap = QPixmap(
+            (tile_max_x - tile_min_x + 1) * 400,
+            (tile_max_y - tile_min_y + 1) * 400,
+        )
+        painter = QPainter(world_pixmap)
+        for x in range(tile_min_x, tile_max_x + 1):
+            for y in range(tile_min_y, tile_max_y + 1):
+                p = Path(resource_path(f"tiles/{x}_{y}.png"))
+                if p.exists():
+                    tile = QPixmap(str(p))
+                else:
+                    # fall back to a default tile if any tiles are missing. This
+                    # should only happen if our padding puts us outside the
+                    # world border. We just want to render a pure black tile in
+                    # this situation.
+                    tile = QPixmap(resource_path("default_tile.png"))
+                x_i = x - tile_min_x
+                y_i = y - tile_min_y
+                painter.drawPixmap(x_i * 400, y_i * 400, 400, 400, tile)
+        painter.end()
 
-        # # crop to the area we care about
-        world_pixmap = self.world_pixmap.copy(world_min_x, world_min_y,
-            world_max_x - world_min_x, world_max_y - world_min_y)
+        # world_pixmap will be slightly bigger than what we want (at most 400
+        # blocks = 1 tile in any direction), so crop to desired portion
+        # TODO round up or down here? might be off by one
+
+        # this calculation is a bit confusing. We want to find how offset we
+        # are from the first and last tile for both x and y. We know that we'll
+        # always be within 1 tile from the border when cropping (as long as our
+        # calculations above are correct). So we'll find out how much above a
+        # multiple of 400 we are and then crop by offsetting from (0, 0) and
+        # from (world_pixmap.width() - 400, world_pixmap.heigt() - 400), since
+        # we give our offset from the nearest tile "to the left", so we can't
+        # just subtract the offset from the height/width of the pixmap.
+        pixmap_x_start = int(world_min_x - (world_min_x // 400) * 400)
+        pixmap_x_end_offset = int(world_max_x - (world_max_x // 400) * 400)
+        pixmap_y_start = int(world_min_y - (world_min_y // 400) * 400)
+        pixmap_y_end_offset = int(world_max_y - (world_max_y // 400) * 400)
+
+        world_pixmap_ = world_pixmap.copy(pixmap_x_start, pixmap_y_start,
+            world_pixmap.width() - pixmap_x_start - 400 + pixmap_x_end_offset,
+            world_pixmap.height() - pixmap_y_start - 400 + pixmap_y_end_offset)
 
         opacity = self.painter.opacity()
-        self.painter.setOpacity(0.13)
+        self.painter.setOpacity(0.15)
         self.painter.drawPixmap(0, 0, self.paint_width, self.paint_height,
-            world_pixmap)
+            world_pixmap_)
         self.painter.setOpacity(opacity)
 
     @profile
