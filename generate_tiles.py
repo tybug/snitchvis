@@ -38,10 +38,18 @@ os.system('magick final.png -crop 400x400 -set filename:tile '
     '"%[fx:page.x/400-25]_%[fx:page.y/400-25]" +repage +adjoin '
     '"%[filename:tile].png"')
 
-# remove large images so we don't spent a ton of time on them with pngcrush
+# remove large images so we don't spent a ton of time on post processing for
+# them. we don't care about them anymore anyway
 print("removing combined.png and final.png")
 os.system("rm combined.png")
 os.system("rm final.png")
+
+# FrameRenderer doesn't fill the QImages before painting on them, so it's
+# initialized with random data, and leaving transparent pixels allows that to
+# show through. Make sure all of our images are totally full ofs actual pixels.
+print("converting transparent pixels to black pixels")
+os.system('for file in *.png; do convert ./"$file" -background black -alpha '
+    'remove -alpha off -set filename:f "%t" "%[filename:f].png"; done')
 
 print("crushing files with pngcrush")
 # could add -brute here if we wanted the absolute best compression, but it takes
