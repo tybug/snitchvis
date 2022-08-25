@@ -71,15 +71,6 @@ class Event:
 
     @classmethod
     def parse(cls, raw_event, snitch_f, enter_f, login_f, logout_f, time_f):
-        if enter_f in raw_event:
-            EventClass = Ping
-        elif logout_f in raw_event:
-            EventClass = Logout
-        elif login_f in raw_event:
-            EventClass = Login
-        else:
-            raise InvalidEventException("Could not determine event type")
-
         pattern = re.escape(snitch_f)
         # replace formats with named groups, as groups could appear in any order
         # (or any number of times) in the input string
@@ -132,6 +123,21 @@ class Event:
             raise InvalidEventException(f"invalid datetime: {e}. Got "
                 f"{time_str}, matching against format {time_f}")
 
+        if "action" not in result.groupdict():
+            # default to assuming it's a ping if there's no %ACTION% group in
+            # the kira format (which should happen only for very weirdly set up
+            # kira formats)
+            EventClass = Ping
+        else:
+            action = result.group("action")
+            if action == enter_f:
+                EventClass = Ping
+            elif action == logout_f:
+                EventClass = Logout
+            elif action == login_f:
+                EventClass = Login
+            else:
+                raise InvalidEventException("Could not determine event type")
         # minecraft uses y as height, to preserve my sanity we're going to swap
         # and use z as height
         return EventClass(username, snitch_name, nl_group, x, z, y, time)
