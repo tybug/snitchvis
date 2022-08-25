@@ -128,8 +128,9 @@ class Event:
 
         try:
             time = datetime.strptime(time_str, time_f)
-        except:
-            raise InvalidEventException()
+        except Exception as e:
+            raise InvalidEventException(f"invalid datetime: {e}. Got "
+                f"{time_str}, matching against format {time_f}")
 
         # minecraft uses y as height, to preserve my sanity we're going to swap
         # and use z as height
