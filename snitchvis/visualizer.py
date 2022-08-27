@@ -507,7 +507,7 @@ class SnitchVisRecord:
         # https://stackoverflow.com/a/13298538
         # -y overwrites output file if exists
         # -r specifies framerate (frames per second)
-        crf = "23" # 23 is default
+        crf = "29" # 23 is default
         preset = "medium" # medium is default
         codec = "mjpeg"
         args = [
