@@ -472,9 +472,8 @@ class SnitchVisRecord:
         if not (start and end):
             duration = MINIMUM_VIDEO_DURATION
         else:
-            duration = self.renderer.event_start_td - self.renderer.event_end_td
             # in ms (relative to game time)
-            duration = duration.total_seconds() * 1000
+            duration = (end - start).total_seconds() * 1000
 
         # realtime duration can't be longer than ingame duration, or we'd have
         # to elongate the video instead of compressing it.
