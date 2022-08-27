@@ -80,50 +80,32 @@ class FrameRenderer:
         # events by the same player which aren't too far apart in time.
         self.mode = config.mode
         self.heatmap_scale = config.heatmap_scale
+        # TODO expose as config parameters (draw_coordinates too) instead of
+        # framerenderer parameter / setting after the fact
         self.draw_time_span = draw_time_span
-
-        snitches = config.snitches
-        users = config.users
-        heatmap_percentage = config.heatmap_percentage
-        events = config.events
-        show_all_snitches = config.show_all_snitches
-
-        # filter out snitches which are broken or gone. We may want to display
-        # these in a different color/shape later, or have a flag to display
-        # missing snitches in a fancy way.
-        snitches = [s for s in snitches if not s.broken_ts and not s.gone_ts]
-
-        self.snitches_by_loc = {(s.x, s.y, s.z): s for s in snitches}
-
-        if draw_time_span or events:
-            self.event_start_td = min(event.t for event in events)
-            for event in events:
-                # normalize all event times to the earliest event, and convert to ms
-                event.t = int((event.t - self.event_start_td).total_seconds() * 1000)
-            events = sorted(events, key = lambda event: event.t)
-
-            max_t = max(e.t for e in events)
-            self.event_end_td = self.event_start_td + timedelta(milliseconds=max_t)
-
-        self.users = users
-        # hash by username for convenience
-        self.users_by_username = {user.username: user for user in self.users}
-
-        self.snitches = snitches
-        self.events = events
-        self.current_mouse_x = 0
-        self.current_mouse_y = 0
+        self.draw_coordinates = True
+        self.snitches = config.snitches
+        self.users = config.users
+        self.heatmap_percentage = config.heatmap_percentage
+        self.events = config.events
+        self.show_all_snitches = config.show_all_snitches
+        self.bounds = config.bounds
         # in ms (relative to game time)
         self.event_fade = config.event_fade
-        self.draw_coordinates = True
+
+        # TODO remove this
         self.playback_start = 0
-        self.playback_end = max(event.t for event in events) if events else 0
-        # force playback to last for at least 100 ms to avoid weird divide by
-        # zero errors when there's only a single event
-        self.playback_end = max(self.playback_end, 100)
+
+        # mouse position
+        self.current_mouse_x = 0
+        self.current_mouse_y = 0
+
+        # playback
         self.paused = False
         self.play_direction = 1
+        self.t = 0
 
+        # painter / base frame
         self.paint_object = paint_object
         self.painter = None
         # a base frame to draw on top of. Allows us to "bake" expensive drawing
@@ -133,7 +115,6 @@ class FrameRenderer:
         # duration of the visualization.
         self.base_frame = None
         self.drawing_base_frame = None
-        self.visible_snitches = None
 
         # coordinate system calculations. see `update_coordinate_systems` for
         # documentation
@@ -144,14 +125,49 @@ class FrameRenderer:
         self.draw_size = None
         self.extra_padding_x = None
         self.extra_padding_y = None
-
         self.previous_paint_device_width = None
         self.previous_paint_device_height = None
 
-        self.t = 0
+        # computer later, when we try and render
+        self.visible_snitches = None
 
+        # event timedeltas, will be computed later if conditions are met
+        self.event_start_td = None
+        self.event_end_td = None
+
+        # heatmap, will be computed later if conditions are met
         self.heatmap_max_hits = None
-        self.heatmap_aggregate_time = int(self.playback_end * heatmap_percentage / 100)
+        self.heatmap_aggregate_time = None
+        self.heatmap_beta = None
+        # unfortunate naming collision with desmos alpha and opacity alpha
+        self.heatmap_alpha_ = None
+
+        # some useful dicts for speed / convenience. will be computed later
+        self.snitches_by_loc = None
+        self.users_by_username = None
+
+
+        # MARK: filtering / computation below. ordering very much matters here,
+        # as some steps depend on previous ones.
+
+        self.filter_snitches()
+        self.compute_bounding_box()
+        self.filter_by_bounding_box()
+
+        if self.draw_time_span and self.events:
+            self.compute_event_start_end_tds()
+
+        self.compute_playback_end()
+
+        if self.mode == "heatmap":
+            self.compute_heatmap_data()
+
+        self.compute_users_by_username()
+        self.compute_snitches_by_loc()
+
+    def compute_heatmap_data(self):
+        self.heatmap_aggregate_time = int(
+            self.playback_end * self.heatmap_percentage / 100)
         # determine the maximum number of hits ever shown on the heatmap so we
         # can calibrate our color scale.
         # The naive approach is to count the largest number of global hits, but
@@ -169,37 +185,75 @@ class FrameRenderer:
         # it's not great, it should be ok.
         # only calculate in heatmap mode to avoid any overhead. Even this
         # estimate can get very expensive with small aggregate times!
-        if self.mode == "heatmap":
-            self.heatmap_max_hits = 0
-            for i in range(self.playback_end // self.heatmap_aggregate_time):
-                t_start = self.heatmap_aggregate_time * i
-                t_end = self.heatmap_aggregate_time * (i + 1)
-                hits_by_loc = defaultdict(int)
-                for event in events:
-                    if t_start <= event.t <= t_end:
-                        hits_by_loc[(event.x, event.y, event.z)] += 1
+        self.heatmap_max_hits = 0
+        for i in range(self.playback_end // self.heatmap_aggregate_time):
+            t_start = self.heatmap_aggregate_time * i
+            t_end = self.heatmap_aggregate_time * (i + 1)
+            hits_by_loc = defaultdict(int)
+            for event in self.events:
+                if t_start <= event.t <= t_end:
+                    hits_by_loc[(event.x, event.y, event.z)] += 1
 
-                # some chunks may not have any events
-                if not hits_by_loc:
-                    continue
-                max_hit_chunk = max(hits_by_loc.values())
-                self.heatmap_max_hits = max(self.heatmap_max_hits, max_hit_chunk)
+            # some chunks may not have any events
+            if not hits_by_loc:
+                continue
+            max_hit_chunk = max(hits_by_loc.values())
+            self.heatmap_max_hits = max(self.heatmap_max_hits, max_hit_chunk)
 
-            # desmos link: https://www.desmos.com/calculator/ypxartrflj
-            # x is hits, y is opacity, n is self.beatmap_max_hits, beta is a
-            # parameter controlling the steepness of the easing, and alpha is
-            # solved in terms of beta and n to have the curve pass through
-            # (n, 1) - ie, a snitch with the maximum number of hits has an
-            # opacity of 1.
-            self.heatmap_beta = 0.4
-            # unfortunate naming collision with desmos alpha and opacity alpha
-            self.heatmap_alpha_ = 1 / (self.heatmap_max_hits ** self.heatmap_beta)
+        # desmos link: https://www.desmos.com/calculator/ypxartrflj
+        # x is hits, y is opacity, n is self.beatmap_max_hits, beta is a
+        # parameter controlling the steepness of the easing, and alpha is
+        # solved in terms of beta and n to have the curve pass through
+        # (n, 1) - ie, a snitch with the maximum number of hits has an
+        # opacity of 1.
+        self.heatmap_beta = 0.4
+        self.heatmap_alpha_ = 1 / (self.heatmap_max_hits ** self.heatmap_beta)
 
+    def compute_users_by_username(self):
+        self.users_by_username = {user.username: user for user in self.users}
+
+    def compute_snitches_by_loc(self):
+        self.snitches_by_loc = {(s.x, s.y, s.z): s for s in self.snitches}
+
+    def filter_by_bounding_box(self):
+        # remove any events which aren't within our bounding box
+        # TODO we probably want to keep some events outside our bounding box but
+        # still inside our padding, so they're still visible
+        usernames_seen = set()
+        new_events = []
+        for event in self.events:
+            if (self.min_x <= event.x <= self.max_x and
+                self.min_y <= event.y <= self.max_y
+            ):
+                new_events.append(event)
+                usernames_seen.add(event.username)
+
+        self.events = new_events
+        self.users = [u for u in self.users if u.username in usernames_seen]
+
+    def compute_playback_end(self):
+        self.playback_end = max(event.t for event in self.events) if self.events else 0
+        # force playback to last for at least 100 ms to avoid weird divide by
+        # zero errors when there's only a single event
+        self.playback_end = max(self.playback_end, 100)
+
+    def compute_event_start_end_tds(self):
+        self.event_start_td = min(event.t for event in self.events)
+        for event in self.events:
+            # normalize all event times to the earliest event, and convert to ms
+            event.t = int((event.t - self.event_start_td).total_seconds() * 1000)
+
+        events = sorted(self.events, key = lambda event: event.t)
+        max_t = max(e.t for e in events)
+
+        self.event_end_td = self.event_start_td + timedelta(milliseconds=max_t)
+
+    def compute_bounding_box(self):
         # figure out a bounding box for our events.
         # if we want to show all our snitches instead of all our events, bound
         # to the snitches instead.
         # If we don't have any events, use our snitches to bound instead.
-        if show_all_snitches:
+        if self.show_all_snitches:
             bounding_events = self.snitches
         elif not self.events:
             bounding_events = self.snitches
@@ -207,50 +261,61 @@ class FrameRenderer:
             bounding_events = self.events
 
         # config bounds override everything else
-        if config.bounds:
-            self.min_x = config.bounds[0]
-            self.min_y = config.bounds[1]
-            self.max_x = config.bounds[2]
-            self.max_y = config.bounds[3]
+        if self.bounds:
+            min_x = self.bounds[0]
+            min_y = self.bounds[1]
+            max_x = self.bounds[2]
+            max_y = self.bounds[3]
         elif bounding_events:
-            self.max_x = max(e.x for e in bounding_events)
-            self.min_x = min(e.x for e in bounding_events)
-            self.max_y = max(e.y for e in bounding_events)
-            self.min_y = min(e.y for e in bounding_events)
+            max_x = max(e.x for e in bounding_events)
+            min_x = min(e.x for e in bounding_events)
+            max_y = max(e.y for e in bounding_events)
+            min_y = min(e.y for e in bounding_events)
         else:
             # if we don't have any events OR snitches, just bound to the entire
             # 10k radius map.
-            self.max_x = 10_000
-            self.min_x = -10_000
-            self.max_y = 10_000
-            self.min_y = -10_000
+            max_x = 10_000
+            min_x = -10_000
+            max_y = 10_000
+            min_y = -10_000
 
         # this is almost certainly a rectangle, so we'll pad it out to be a
         # square, adding padding along the shorter axis.
-        x_dist = self.max_x - self.min_x
-        y_dist = self.max_y - self.min_y
+        x_dist = max_x - min_x
+        y_dist = max_y - min_y
         dist_diff = abs(x_dist - y_dist)
 
         # pad along both sides of the axis equally so the snitches are centered
         # in the square
         if x_dist < y_dist:
-            self.max_x += (dist_diff / 2)
-            self.min_x -= (dist_diff / 2)
+            max_x += (dist_diff / 2)
+            min_x -= (dist_diff / 2)
         if y_dist < x_dist:
-            self.max_y += (dist_diff / 2)
-            self.min_y -= (dist_diff / 2)
+            max_y += (dist_diff / 2)
+            min_y -= (dist_diff / 2)
 
         # should be the same as max_y - min_y after our adjustments above
-        bounding_size = self.max_x - self.min_x
+        bounding_size = max_x - min_x
         if bounding_size < BOUNDING_BOX_MIN_SIZE:
             diff = BOUNDING_BOX_MIN_SIZE - bounding_size
             # expand both x and y by `bounding_size` to a total size of
             # BOUNDING_BOX_MIN_SIZE
-            self.max_x += (diff / 2)
-            self.min_x -= (diff / 2)
-            self.max_y += (diff / 2)
-            self.min_y -= (diff / 2)
+            max_x += (diff / 2)
+            min_x -= (diff / 2)
+            max_y += (diff / 2)
+            min_y -= (diff / 2)
 
+        self.min_x = min_x
+        self.max_x = max_x
+        self.min_y = min_y
+        self.max_y = max_y
+
+    def filter_snitches(self):
+        # filter out snitches which are broken or gone. We may want to display
+        # these in a different color/shape later, or have a flag to display
+        # missing snitches in a fancy way.
+        self.snitches = [s for s in self.snitches if not s.broken_ts
+            and not s.gone_ts]
 
     def update_coordinate_systems(self):
         # calculating coordinate based geometry can actually get very expensive
@@ -495,7 +560,7 @@ class FrameRenderer:
         # x offset from edge of screen
         x_offset = 5
 
-        if self.draw_time_span:
+        if self.draw_time_span and self.events:
             start = self.event_start_td.strftime('%m/%d/%Y %H:%M')
             # if the snitch log only covers a single day, don't show mm/dd/yyyy
             # twice
