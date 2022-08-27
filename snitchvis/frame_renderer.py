@@ -90,6 +90,7 @@ class FrameRenderer:
         self.bounds = config.bounds
         # in ms (relative to game time)
         self.event_fade = config.event_fade
+        self.world_map_opacity = config.world_map_opacity
 
         # TODO remove this
         self.playback_start = 0
@@ -544,7 +545,7 @@ class FrameRenderer:
             world_pixmap.height() - pixmap_y_start - 400 + pixmap_y_end_offset)
 
         opacity = self.painter.opacity()
-        self.painter.setOpacity(0.15)
+        self.painter.setOpacity(self.world_map_opacity)
         self.painter.drawPixmap(0, 0, self.paint_width, self.paint_height,
             world_pixmap_)
         self.painter.setOpacity(opacity)

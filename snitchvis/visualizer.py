@@ -277,6 +277,7 @@ class Config:
     bounds: list[int] = None
     draw_coordinates: bool = True
     draw_time_span: bool = True
+    world_map_opacity: int = 0.15
 
 class Snitchvis(QMainWindow):
     def __init__(self, config,
