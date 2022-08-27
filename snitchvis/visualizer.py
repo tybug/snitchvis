@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 import sqlite3
 from subprocess import Popen, PIPE
 
@@ -447,12 +447,16 @@ MINIMUM_EVENT_FADE = 500
 
 class SnitchVisRecord:
     def __init__(self, duration_rt, size, fps, event_fade, output_file, config):
+        config.draw_coordinates = False
+
         # duration_rt is in ms (relative to real time)
-        self.config = config
         self.fps = fps
         self.size = size
         self.output_file = output_file
-        events = config.events
+        # rely on frame renderer to do complicated event filtering computations
+        # for us before retrieving the event start and end td
+        self.renderer = FrameRenderer(None, config)
+
 
         # our events cover `duration` ms (in game time), and we need to
         # compress that into `duration_rt` ms (in real time) at
@@ -460,10 +464,17 @@ class SnitchVisRecord:
         # to work with, and each frame needs to take
         # `duration / num_frames` seconds.
 
-        max_t = max(e.t for e in events)
-        min_t = min(e.t for e in events)
-        # in ms (relative to game time). convert to ms from datetime
-        duration = (max_t - min_t).total_seconds() * 1000
+        start = self.renderer.event_start_td
+        end = self.renderer.event_end_td
+
+        # after event filtering, there could end up being no events. show the
+        # shortest video possible in that case
+        if not (start and end):
+            duration = MINIMUM_VIDEO_DURATION
+        else:
+            duration = self.renderer.event_start_td - self.renderer.event_end_td
+            # in ms (relative to game time)
+            duration = duration.total_seconds() * 1000
 
         # realtime duration can't be longer than ingame duration, or we'd have
         # to elongate the video instead of compressing it.
@@ -493,18 +504,15 @@ class SnitchVisRecord:
 
         # update config with our event fade (defaults to 5 in-game minutes
         # otherwise)
-        self.config.event_fade = event_fade
-        self.config.draw_coordinates = False
+        self.renderer.event_fade = event_fade
 
     @profile
     def render(self):
-        renderer = FrameRenderer(None, self.config)
-
         image = QImage(self.size, self.size, QImage.Format.Format_RGB32)
         image.fill(Qt.GlobalColor.black)
-        renderer.paint_object = image
-        renderer.render(drawing_base_frame=True)
-        renderer.base_frame = image
+        self.renderer.paint_object = image
+        self.renderer.render(drawing_base_frame=True)
+        self.renderer.base_frame = image
 
         # https://stackoverflow.com/a/13298538
         # -y overwrites output file if exists
@@ -534,9 +542,9 @@ class SnitchVisRecord:
                 image = QImage(self.size, self.size, QImage.Format.Format_RGB32)
                 image.fill(Qt.GlobalColor.black)
 
-                renderer.paint_object = image
-                renderer.t = int(i * self.frame_duration)
-                renderer.render()
+                self.renderer.paint_object = image
+                self.renderer.t = int(i * self.frame_duration)
+                self.renderer.render()
 
                 buffer = QBuffer()
                 print(f"saving image {i} to buffer")
@@ -558,24 +566,23 @@ class SnitchVisImage:
         config.draw_coordinates = False
 
         self.output_file = output_file
-        self.config = config
+        self.renderer = FrameRenderer(None, config)
 
         # sometimes we don't want to visualize any events. In this case, it
         # doesn't actually matter what we set min_t to; the same result will be
         # rendered. We just want to avoid an exception when taking the min of an
         # empty collection.
-        if config.events:
-            self.min_t = min(event.t for event in config.events)
-        else:
+        self.min_t = self.renderer.event_start_td
+        if not self.min_t:
             # self.min_t = 0 would work too, but let's try and keep the renderer
             # time close to zero. has less of a chance of breaking things or
             # causing performance issues in the future
-            self.min_t = datetime.utcnow()
+            self.min_t = datetime.now(timezone.utc)
 
     def render(self):
         image = QImage(1000, 1000, QImage.Format.Format_RGB32)
         image.fill(Qt.GlobalColor.black)
-        renderer = FrameRenderer(image, self.config)
+        self.renderer.paint_object = image
 
         # set the renderer time properly so the event actually fades out.
         # We want to set the renderer time an equivalent time in the future to
@@ -583,7 +590,7 @@ class SnitchVisImage:
         # past the first event, we want to set t to 10 minutes past the first
         # event. If we're rendering right at the first event, we want to set t
         # to 0.
-        renderer.t = (datetime.utcnow() - self.min_t).total_seconds() * 1000
-        renderer.render()
+        self.renderer.t = (datetime.now(timezone.utc) - self.min_t).total_seconds() * 1000
+        self.renderer.render()
 
         image.save(self.output_file, "jpeg", quality=100)
