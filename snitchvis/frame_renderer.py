@@ -152,7 +152,7 @@ class FrameRenderer:
         self.compute_bounding_box()
         self.filter_by_bounding_box()
 
-        if self.draw_time_span or self.events:
+        if self.events:
             self.compute_event_start_end_tds()
 
         self.compute_playback_end()
