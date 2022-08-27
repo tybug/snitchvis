@@ -73,17 +73,15 @@ class FrameRenderer:
     object.
     """
     @profile
-    def __init__(self, paint_object, config, *, draw_time_span=True):
+    def __init__(self, paint_object, config):
         super().__init__()
         # how to visualize events. One of box/line/heatmap. box highlights
         # the snitch the event was located at, and line draws lines between
         # events by the same player which aren't too far apart in time.
         self.mode = config.mode
         self.heatmap_scale = config.heatmap_scale
-        # TODO expose as config parameters (draw_coordinates too) instead of
-        # framerenderer parameter / setting after the fact
-        self.draw_time_span = draw_time_span
-        self.draw_coordinates = True
+        self.draw_time_span = config.draw_time_span
+        self.draw_coordinates = config.draw_coordinates
         self.snitches = config.snitches
         self.users = config.users
         self.heatmap_percentage = config.heatmap_percentage

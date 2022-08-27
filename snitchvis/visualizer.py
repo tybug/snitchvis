@@ -275,6 +275,8 @@ class Config:
     # list of exactly four elements: [x1, y1, x2, y2]. Specifies the bounds of
     # the viewport and overrides automatic bounds calculation.
     bounds: list[int] = None
+    draw_coordinates = True
+    draw_time_span = True
 
 class Snitchvis(QMainWindow):
     def __init__(self, config,
@@ -492,11 +494,11 @@ class SnitchVisRecord:
         # update config with our event fade (defaults to 5 in-game minutes
         # otherwise)
         self.config.event_fade = event_fade
+        self.config.draw_coordinates = False
 
     @profile
     def render(self):
         renderer = FrameRenderer(None, self.config)
-        renderer.draw_coordinates = False
 
         image = QImage(self.size, self.size, QImage.Format.Format_RGB32)
         image.fill(Qt.GlobalColor.black)
@@ -552,8 +554,12 @@ class SnitchVisImage:
     def __init__(self, output_file, config):
         # 10 in game minutes
         config.event_fade = 10 * 60 * 1000
+        config.draw_time_span = False
+        config.draw_coordinates = False
+
         self.output_file = output_file
         self.config = config
+
         # sometimes we don't want to visualize any events. In this case, it
         # doesn't actually matter what we set min_t to; the same result will be
         # rendered. We just want to avoid an exception when taking the min of an
@@ -569,9 +575,7 @@ class SnitchVisImage:
     def render(self):
         image = QImage(1000, 1000, QImage.Format.Format_RGB32)
         image.fill(Qt.GlobalColor.black)
-
-        renderer = FrameRenderer(image, self.config, draw_time_span=False)
-        renderer.draw_coordinates = False
+        renderer = FrameRenderer(image, self.config)
 
         # set the renderer time properly so the event actually fades out.
         # We want to set the renderer time an equivalent time in the future to
