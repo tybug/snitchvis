@@ -275,8 +275,8 @@ class Config:
     # list of exactly four elements: [x1, y1, x2, y2]. Specifies the bounds of
     # the viewport and overrides automatic bounds calculation.
     bounds: list[int] = None
-    draw_coordinates = True
-    draw_time_span = True
+    draw_coordinates: bool = True
+    draw_time_span: bool = True
 
 class Snitchvis(QMainWindow):
     def __init__(self, config,
