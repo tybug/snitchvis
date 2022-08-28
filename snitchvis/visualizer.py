@@ -39,7 +39,6 @@ class Event:
         "EEEE": "A",
         "MMM": "b",
         "MMMM": "B",
-        "EEE MMM dd HH:mm:ss yyyy": "c",
         "dd": "d",
         "d": "e",
         "SSSSSS": "f",
