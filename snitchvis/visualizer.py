@@ -55,7 +55,7 @@ class Event:
         "ww": "U",
         "e": "w",
         "MM/dd/yy": "x",
-        "HH:mm:ss": "X",
+        "HH:mm:ss": "H:%M:%S",
         "yy": "y",
         "yyyy": "Y",
         "Z": "z",
