@@ -23,6 +23,6 @@ setup(
         "PyQt6"
     ],
     package_data={
-        "snitchvis": ["resources/*"]
+        "snitchvis": ["resources/*", "resources/tiles/*"]
     }
 )
