@@ -19,3 +19,7 @@ However, there is also a pypi package:
 ```
 pip install snitchvis
 ```
+
+## Credits
+
+Thanks to paddington_bear and lowtuff for making their terrain data publicly available.
