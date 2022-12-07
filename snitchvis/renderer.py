@@ -25,7 +25,9 @@ class Renderer(QFrame):
         self.users = config.users
         # hash by username for convenience
         self.users_by_username = {user.username: user for user in self.users}
-        self.events = config.events
+        # TODO is this sort necessary? config.events should probably sort itself
+        # by t at some point...
+        self.events = sorted(config.events, key=lambda event: event.t)
 
         self.setMouseTracking(True)
 
