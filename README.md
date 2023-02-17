@@ -8,10 +8,10 @@ Used by [SnitchVisBot](https://github.com/tybug/snitchvisbot) to render snitches
 
 ## Installation
 
-There is a pypi package at https://pypi.org/project/snitchvis/, but I don't push updates to it because snitchvis is over the 100mb pypi limit. Therefore I recommend you install from github:
+There is a pypi package at https://pypi.org/project/snitchvis/, but I don't push updates to it because snitchvis is over the 100mb pypi limit. Therefore I recommend you install from source:
 
 ```
-pip install https://github.com/tybug/snitchvis
+pip install git+https://github.com/tybug/snitchvis.git
 ```
 
 Fair warning that snitchvis is currently a 144mb install, and may increase in the future. This is due to storing the tiles for CivMC's worldmap.
