@@ -46,7 +46,7 @@ os.system("rm final.png")
 
 # FrameRenderer doesn't fill the QImages before painting on them, so it's
 # initialized with random data, and leaving transparent pixels allows that to
-# show through. Make sure all of our images are totally full ofs actual pixels.
+# show through. Make sure all of our images are totally full of actual pixels.
 print("converting transparent pixels to black pixels")
 os.system('for file in *.png; do convert ./"$file" -background black -alpha '
     'remove -alpha off -set filename:f "%t" "%[filename:f].png"; done')
