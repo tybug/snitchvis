@@ -40,6 +40,10 @@ os.system('magick final.png -crop 400x400 -set filename:tile '
     '"%[fx:page.x/400-25]_%[fx:page.y/400-25]" +repage +adjoin '
     '"%[filename:tile].png"')
 
+# dont waste time postprocessing final.png, we're done with it after cropping
+print("removing final.png")
+os.system("rm final.png")
+
 # FrameRenderer doesn't fill the QImages before painting on them, so it's
 # initialized with random data, and leaving transparent pixels allows that to
 # show through. Make sure all of our images are totally full ofs actual pixels.
