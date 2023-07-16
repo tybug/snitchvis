@@ -26,6 +26,7 @@ class Event:
     username: str
     snitch_name: str
     namelayer_group: str
+    world: str
     x: int
     y: int
     z: int
@@ -76,6 +77,7 @@ class Event:
         pattern = pattern.replace("%PLAYER%", "(?P<username>.*)")
         pattern = pattern.replace("%ACTION%", "(?P<action>.*)")
         pattern = pattern.replace("%SNITCH%", "(?P<snitch_name>.*)")
+        pattern = pattern.replace("%WORLD%", "(?P<world>.*)")
         pattern = pattern.replace("%X%", "(?P<x>.*)")
         pattern = pattern.replace("%Y%", "(?P<y>.*)")
         pattern = pattern.replace("%Z%", "(?P<z>.*)")
@@ -99,6 +101,7 @@ class Event:
             pattern = pattern.replace("\\ %PING%", "\w*(?P<ping>.*)")
         else:
             pattern = pattern.replace("%PING%", "(?P<ping>.*)")
+        pattern = re.compile(pattern)
         result = re.match(pattern, raw_event)
 
         if not result:
@@ -108,6 +111,16 @@ class Event:
         nl_group = result.group("group")
         username = result.group("username")
         snitch_name = result.group("snitch_name")
+
+        # kira events don't display the world/dimension by default, so assume it
+        # happened in the overworld unless specified otherwise.
+        # This WILL get us into trouble when we parse nether snitch events for
+        # most kira configs, but there's no other way to differentiate, so this
+        # is the best we can do.
+        world = "world"
+        if "world" in pattern.groupindex:
+            world = result.group("world")
+
         x = int(result.group("x"))
         y = int(result.group("y"))
         z = int(result.group("z"))
@@ -137,7 +150,7 @@ class Event:
                 raise InvalidEventException("Could not determine event type")
         # minecraft uses y as height, to preserve my sanity we're going to swap
         # and use z as height
-        return EventClass(username, snitch_name, nl_group, x, z, y, time)
+        return EventClass(username, snitch_name, nl_group, world, x, z, y, time)
 
     @classmethod
     def java_strftime_to_python(cls, time_format):
@@ -248,11 +261,7 @@ def create_users(events):
 def snitches_from_events(events):
     snitches = set()
     for event in events:
-        # kira events don't display the world/dimension, so just assume it
-        # happened in the overworld. This WILL get us into trouble when we parse
-        # nether snitch events, but there's no way to differentiate, so this is
-        # the best we can do.
-        snitch = Snitch("world", event.x, event.y, event.z,
+        snitch = Snitch(event.world, event.x, event.y, event.z,
             event.namelayer_group, None, event.snitch_name, None, None, None,
             None, None, None, None, None, None, None, None, None, None)
         snitches.add(snitch)
