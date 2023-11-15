@@ -121,9 +121,17 @@ class Event:
         if "world" in pattern.groupindex:
             world = result.group("world")
 
-        x = int(result.group("x"))
-        y = int(result.group("y"))
-        z = int(result.group("z"))
+        def convert_int(group_name):
+            v = result.group(group_name)
+            try:
+                return int(v)
+            except ValueError:
+                raise InvalidEventException(f"invalid integer {v} for "
+                    f"{group_name}")
+
+        x = convert_int("x")
+        y = convert_int("y")
+        z = convert_int("z")
 
         time_f = cls.java_strftime_to_python(time_f)
 
